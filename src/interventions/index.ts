@@ -15,7 +15,7 @@ export class IsolationTwin extends BaseTwin {
     const target = String(event.payload.targetId ?? this.targetPipeId);
     if(target!==this.targetPipeId) return;
     this.engaged=true; this.state.metadata.engaged=true;
-    context.emit({type:"valve.command",sourceId:this.state.id,targetId:this.targetPipeId,payload:{action:"close",pipeId:this.targetPipeId,reason:"emergency-isolation"}});
+    context.emit({type:"valve.command",sourceId:this.state.id,targetId:this.targetPipeId,payload:{action:"close",closed:true,pipeId:this.targetPipeId,reason:"emergency-isolation"}});
   }
   tick():void{}
   clone():Twin { const x=new IsolationTwin(this.state.id,this.state.position,this.targetPipeId); x.engaged=this.engaged; Object.assign(x.state,cloneState(this.state)); return x; }
@@ -58,7 +58,7 @@ export class EvacuationTwin extends BaseTwin {
   onEvent(event:SimEvent, context:TwinContext):void {
     if(event.targetId!==this.state.id || event.type!=="evacuation.command") return;
     this.state.metadata.status="active";
-    for(const t of ctwins(context)) if(t.state.kind==="worker") context.emit({type:"evacuation.command",sourceId:this.state.id,targetId:t.state.id,payload:{zoneId:this.zoneId}});
+    for(const t of context.twins()) if(t.state.kind==="worker") context.emit({type:"evacuation.command",sourceId:this.state.id,targetId:t.state.id,payload:{zoneId:this.zoneId}});
   }
   tick():void{}
   clone():Twin { const x=new EvacuationTwin(this.state.id,this.state.position,this.zoneId); Object.assign(x.state,cloneState(this.state)); return x; }
@@ -75,5 +75,3 @@ export class EmergencyShutdownTwin extends BaseTwin {
   tick():void{}
   clone():Twin { const x=new EmergencyShutdownTwin(this.state.id,this.state.position,[...this.targets]); x.triggered=this.triggered; Object.assign(x.state,cloneState(this.state)); return x; }
 }
-
-function ctwins(context:TwinContext):readonly Twin[] { return context.twins(); }
