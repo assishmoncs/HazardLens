@@ -83,16 +83,23 @@ function getNumber(state: TwinState, key: string): number {
   return typeof value === "number" ? value : 0;
 }
 
+function isFailedAsset(state: TwinState): boolean {
+  if (state.kind === "fire" || state.kind === "release" || state.kind === "suppression") return false;
+  return state.integrity <= 0.01 || state.metadata.failed === true || state.metadata.damageState === "failed" || state.metadata.damageState === "collapsed";
+}
+
 export function measureCounterfactual(snapshot: ReturnType<SimulationRuntime["snapshot"]>): CounterfactualMetrics {
   const fireStates = snapshot.twins.filter(t => t.kind === "fire");
+  const activeFires = fireStates.filter(t => t.active && getNumber(t, "intensityMw") > 0);
   const releases = snapshot.twins.filter(t => t.kind === "release");
-  const failed = snapshot.twins.filter(t => !t.active || t.integrity <= 0.01);
+  const activeReleases = releases.filter(t => t.active !== false);
+  const failed = snapshot.twins.filter(isFailedAsset);
   const critical = snapshot.twins.filter(t => getNumber(t, "failureRisk") >= 0.7 || getNumber(t, "risk") >= 0.7);
   const blockedRoutes = snapshot.twins.filter(t => t.kind === "route" && t.metadata.open === false);
   const workerExposure = snapshot.twins
     .filter(t => t.kind === "worker")
     .reduce((sum, t) => sum + getNumber(t, "exposure"), 0);
-  const hazardAreaM2 = releases.reduce((sum, t) => {
+  const hazardAreaM2 = activeReleases.reduce((sum, t) => {
     const radius = getNumber(t, "radiusM");
     return sum + Math.PI * radius * radius;
   }, 0);
@@ -100,8 +107,8 @@ export function measureCounterfactual(snapshot: ReturnType<SimulationRuntime["sn
   const cascadeEvents = snapshot.events.filter(e => e.type === "asset.failed" || e.type === "release.created" || e.type === "fire.created");
   const cascadeDepth = Math.max(fireDepth, Math.min(10, cascadeEvents.length));
   const riskScore =
-    fireStates.length * 18 +
-    releases.length * 12 +
+    activeFires.length * 18 +
+    activeReleases.length * 12 +
     failed.length * 20 +
     critical.length * 8 +
     blockedRoutes.length * 8 +
@@ -111,8 +118,8 @@ export function measureCounterfactual(snapshot: ReturnType<SimulationRuntime["sn
 
   return {
     fireCount: fireStates.length,
-    activeFireCount: fireStates.filter(t => t.active).length,
-    releaseCount: releases.length,
+    activeFireCount: activeFires.length,
+    releaseCount: activeReleases.length,
     failedAssetCount: failed.length,
     criticalAssetCount: critical.length,
     blockedRouteCount: blockedRoutes.length,
