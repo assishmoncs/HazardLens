@@ -22,7 +22,7 @@ export class ValveTwin extends BaseTwin {
   constructor(id: string, position: Vec3, public readonly diameterMm = 100) {
     super(state(id, "valve", position, { open: true, diameterMm }), meta(["valve-state-v1"]));
   }
-  onEvent(event: SimEvent): void {
+  onEvent(event: SimEvent, _context: TwinContext): void {
     if (event.targetId !== this.state.id) return;
     this.record(event, `processed ${event.type}`);
     if (event.type === "valve.command") {
