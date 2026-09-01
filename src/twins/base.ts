@@ -13,8 +13,8 @@ export abstract class BaseTwin implements Twin {
       physicalProfile: metadata.physicalProfile,
       relationships: metadata.relationships ?? [],
       history: metadata.history ?? [],
+      modelIds: metadata.modelIds ?? [],
     };
-    this.behavior = behavior;
   }
 
   protected record(event: SimEvent, summary: string): void {
@@ -34,7 +34,8 @@ export abstract class BaseTwin implements Twin {
   abstract clone(): Twin;
 
   protected distanceTo(other: Twin): number {
-    const a = this.state.position, b = other.state.position;
+    const a = this.state.position;
+    const b = other.state.position;
     return Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
   }
 }
