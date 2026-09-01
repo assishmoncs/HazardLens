@@ -37,6 +37,27 @@ export interface SimEvent<T extends Record<string, unknown> = Record<string, unk
   payload: T; causedBy?: string;
 }
 
-export interface WorldSnapshot { time: number; twins: TwinState[]; events: SimEvent[]; }
-export interface TwinContext { now: number; get(id: string): Twin | undefined; twins(): readonly Twin[]; emit<T extends Record<string, unknown>>(event: Omit<SimEvent<T>, "id" | "time">): void; }
-export interface Twin { readonly state: TwinState; readonly metadata?: TwinMetadata; readonly behavior?: BehaviorModel; onEvent(event: SimEvent, context: TwinContext): void; tick(dt: number, context: TwinContext): void; clone(): Twin; }
+export interface WorldSnapshot {
+  time: number;
+  twins: TwinState[];
+  events: SimEvent[];
+  totalEvents?: number;
+  historyTruncated?: boolean;
+}
+
+export interface TwinContext {
+  now: number;
+  get(id: string): Twin | undefined;
+  twins(): readonly Twin[];
+  emit<T extends Record<string, unknown>>(event: Omit<SimEvent<T>, "id" | "time">): void;
+}
+
+export interface Twin {
+  readonly state: TwinState;
+  readonly metadata?: TwinMetadata;
+  readonly behavior?: BehaviorModel;
+  onEvent(event: SimEvent, context: TwinContext): void;
+  tick(dt: number, context: TwinContext): void;
+  clone(): Twin;
+  withdrawFuel?(requestedKg: number): number;
+}
