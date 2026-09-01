@@ -23,8 +23,9 @@ export function band(estimate:number, relativeUncertainty:number, confidence:Unc
 
 export function confidenceForModel(provenance:ModelProvenance, calibrationCoverage:number):UncertaintyBand["confidence"] {
   const refs = provenance.references.length;
-  if (calibrationCoverage >= .8 && refs >= 2) return "high";
-  if (calibrationCoverage >= .4 || refs >= 1) return "medium";
+  const coverage = clamp(calibrationCoverage,0,1);
+  if (coverage >= .8 && refs >= 1) return "high";
+  if (coverage >= .4 || refs >= 1) return "medium";
   return "low";
 }
 
