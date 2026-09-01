@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { ViewerSimulation, FaultMode } from './sim.js';
+import { ViewerSimulation } from './sim.js';
+import type { FaultMode } from './sim.js';
 import { WorldRenderer } from './worldRenderer.js';
 import { TwinInspector } from './inspector.js';
 import { createFacility } from './facility.js';
@@ -29,7 +30,7 @@ const row=document.createElement('div');row.style.cssText='display:grid;grid-tem
 function ctl(labelText:string,fn:()=>void){const b=document.createElement('button');b.textContent=labelText;b.onclick=fn;b.style.cssText='padding:8px;border-radius:8px;border:1px solid #355063;background:#11202b;color:#fff;cursor:pointer';row.appendChild(b);return b}
 ctl('INJECT',()=>{const winds:Record<string,[number,number]>={East:[3,0],West:[-3,0],North:[0,-3],South:[0,3]};const [windX,windZ]=winds[wind.value];sim.injectIncident({assetId:assetSelect.value,mode:faultSelect.value as FaultMode,severity:Number(severity.value),windX,windZ});});
 ctl('RESET',()=>{sim.reset();inspector.show()});
-const actions=document.createElement('div'); actions.style.cssText='margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px';panel.appendChild(actions);
+const actions=document.createElement('div'); actions.style.cssText='margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px'; panel.appendChild(actions);
 function actionButton(labelText:string,fn:()=>void){const b=document.createElement('button');b.textContent=labelText;b.onclick=fn;b.style.cssText='padding:7px;border-radius:8px;border:1px solid #355063;background:#0e1821;color:#cfe7ff;cursor:pointer';actions.appendChild(b)}
 actionButton('ISOLATE',()=>sim.intervene('isolate')); actionButton('COOL',()=>sim.intervene('cool')); actionButton('SUPPRESS',()=>sim.intervene('suppress')); actionButton('EVACUATE',()=>sim.intervene('evacuate'));
 
