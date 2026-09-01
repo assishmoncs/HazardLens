@@ -35,6 +35,7 @@ export class EmergencyPlanner {
     const positions = new Map<string, Vec3>();
     for (const twin of snapshot.twins) positions.set(twin.id, twin.position);
     positions.set('MUSTER_POINT', muster);
+
     const adjacency = new Map<string, { to: string; type: string }[]>();
     const addEdge = (from: string, to: string, type: string) => {
       if (!positions.has(from) || !positions.has(to)) return;
@@ -44,15 +45,29 @@ export class EmergencyPlanner {
       adjacency.get(to)!.push({ to: from, type });
     };
     for (const edge of this.edges) addEdge(edge.from, edge.to, edge.type);
-    const nearby = snapshot.twins.filter(t => t.kind !== 'worker' && t.kind !== 'weather')
-      .map(t => ({ id: t.id, d: distance(worker.position, t.position) })).sort((a, b) => a.d - b.d).slice(0, 2);
-    for (const n of nearby) addEdge(workerId, n.id, 'walkway');
-    const exits = snapshot.twins.filter(t => t.kind === 'worker' || t.kind === 'wall' || t.kind === 'route')
-      .map(t => ({ id: t.id, d: distance(t.position, muster) })).sort((a, b) => a.d - b.d).slice(0, 3);
-    for (const e of exits) addEdge(e.id, 'MUSTER_POINT', 'emergency_route');
+
+    // The worker gets access only to explicit facility routes. When no worker edge exists,
+    // connect them to the nearest explicit route node so the planner can still produce a path.
+    const workerRouteNodes = this.edges.flatMap(edge => [edge.from, edge.to])
+      .filter((id, index, list) => list.indexOf(id) === index)
+      .filter(id => id !== workerId && id !== 'MUSTER_POINT')
+      .map(id => ({ id, d: distance(worker.position, positions.get(id)!) }))
+      .filter(item => Number.isFinite(item.d))
+      .sort((a, b) => a.d - b.d)
+      .slice(0, 1);
+    for (const node of workerRouteNodes) addEdge(workerId, node.id, 'walkway');
+
+    const routeNodes = [...adjacency.keys()]
+      .filter(id => id !== workerId && id !== 'MUSTER_POINT')
+      .map(id => ({ id, d: distance(positions.get(id)!, muster) }))
+      .sort((a, b) => a.d - b.d)
+      .slice(0, 2);
+    for (const node of routeNodes) addEdge(node.id, 'MUSTER_POINT', 'emergency_route');
+
     const dist = new Map<string, number>([[workerId, 0]]);
     const previous = new Map<string, string>();
     const visited = new Set<string>();
+
     while (true) {
       let current: string | undefined;
       let best = Infinity;
@@ -61,24 +76,34 @@ export class EmergencyPlanner {
       visited.add(current);
       for (const edge of adjacency.get(current) ?? []) {
         if (visited.has(edge.to)) continue;
-        const a = positions.get(current)!; const b = positions.get(edge.to)!;
+        const a = positions.get(current)!;
+        const b = positions.get(edge.to)!;
         const base = Math.max(1, distance(a, b));
-        const hazard = this.hazardPenalty(snapshot, b);
-        const routePenalty = edge.type === 'emergency_route' ? 0.8 : edge.type === 'walkway' ? 1 : 1.15;
+        const midpoint = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 };
+        const endpointHazard = this.hazardPenalty(snapshot, b);
+        const segmentHazard = Math.max(endpointHazard, this.hazardPenalty(snapshot, midpoint));
         const failurePenalty = this.assetFailurePenalty(snapshot, edge.to);
-        const hazardWeight = 1 + hazard * routePenalty * 2;
-        const weight = base * hazardWeight + failurePenalty;
+        const routePenalty = edge.type === 'emergency_route' ? 0.75 : edge.type === 'walkway' ? 1 : 1.1;
+        const weight = base * (1 + segmentHazard * routePenalty * 2) + failurePenalty;
         const candidate = (dist.get(current) ?? Infinity) + weight;
-        if (candidate < (dist.get(edge.to) ?? Infinity)) { dist.set(edge.to, candidate); previous.set(edge.to, current); }
+        if (candidate < (dist.get(edge.to) ?? Infinity)) {
+          dist.set(edge.to, candidate);
+          previous.set(edge.to, current);
+        }
       }
     }
     if (!dist.has('MUSTER_POINT')) return undefined;
-    const path: string[] = []; let node = 'MUSTER_POINT';
+
+    const path: string[] = [];
+    let node = 'MUSTER_POINT';
     while (node) {
       path.unshift(node);
       if (node === workerId) break;
-      const next = previous.get(node); if (!next) return undefined; node = next;
+      const next = previous.get(node);
+      if (!next) return undefined;
+      node = next;
     }
+
     const geometricDistance = path.slice(0, -1).reduce((sum, id, i) => sum + distance(positions.get(id)!, positions.get(path[i + 1])!), 0);
     const weightedDistance = dist.get('MUSTER_POINT')!;
     const riskScore = clamp((weightedDistance / Math.max(1, geometricDistance) - 1) * 20, 0, 100);
