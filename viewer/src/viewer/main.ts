@@ -69,47 +69,67 @@ style.textContent = `
   button:hover { transform: translateY(-1px); border-color: rgba(85,215,255,.55) !important; box-shadow: 0 8px 22px rgba(0,0,0,.18); }
   select:focus, input:focus { outline: none; border-color: rgba(85,215,255,.55); box-shadow: 0 0 0 3px rgba(85,215,255,.09); }
   .hl-glass { background: linear-gradient(145deg, rgba(15,27,38,.78), rgba(4,10,15,.72)); border: 1px solid var(--line); box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.035); backdrop-filter: blur(18px) saturate(130%); -webkit-backdrop-filter: blur(18px) saturate(130%); border-radius: 18px; }
-  .hl-card { overflow: hidden; }
-  .hl-summary { list-style: none; cursor: pointer; padding: 13px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .hl-card { overflow: hidden; min-width: 0; flex: 0 0 auto; }
+  .hl-summary { list-style: none; cursor: pointer; padding: 13px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 52px; }
   .hl-summary::-webkit-details-marker { display: none; }
-  .hl-summary::after { content: '+'; color: var(--muted); font-size: 16px; }
+  .hl-summary::after { content: '+'; color: var(--muted); font-size: 16px; flex: 0 0 auto; }
   details[open] > .hl-summary::after { content: '−'; color: var(--cyan); }
-  .hl-body { padding: 0 14px 14px; }
+  .hl-body { padding: 0 14px 14px; min-width: 0; }
+  .hl-body > * + * { margin-top: 8px; }
   .hl-kicker { color: var(--muted); text-transform: uppercase; letter-spacing: .12em; font-size: 10px; }
   .hl-section-title { font-weight: 800; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
-  .hl-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .hl-grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-  .hl-control { width: 100%; padding: 9px 10px; border-radius: 10px; border: 1px solid rgba(125,171,199,.2); background: rgba(5,13,20,.7); color: var(--text); }
-  .hl-btn { width: 100%; min-height: 38px; padding: 9px 10px; border-radius: 10px; border: 1px solid rgba(125,171,199,.18); background: rgba(11,24,33,.86); color: var(--text); font-weight: 750; cursor: pointer; }
+  .hl-grid2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8px; }
+  .hl-grid3 { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+  .hl-control { width: 100%; min-width: 0; padding: 9px 10px; border-radius: 10px; border: 1px solid rgba(125,171,199,.2); background: rgba(5,13,20,.7); color: var(--text); }
+  .hl-btn { width: 100%; min-width: 0; min-height: 38px; padding: 9px 10px; border-radius: 10px; border: 1px solid rgba(125,171,199,.18); background: rgba(11,24,33,.86); color: var(--text); font-weight: 750; cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.15; white-space: normal; overflow-wrap: anywhere; }
   .hl-btn-primary { background: linear-gradient(180deg, rgba(255,119,57,.23), rgba(117,31,12,.38)); border-color: rgba(255,128,65,.68); box-shadow: 0 0 22px rgba(255,108,45,.16); }
   .hl-btn-green { border-color: rgba(95,227,161,.3); }
   .hl-btn-cyan { border-color: rgba(85,215,255,.34); }
-  .hl-metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 10px; }
+  .hl-metrics { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 8px; margin-top: 10px; }
   .hl-metric { padding: 10px 11px; min-width: 0; }
   .hl-metric-value { font-size: 20px; font-weight: 850; line-height: 1; margin-top: 5px; }
   .hl-metric-label { color: var(--muted); font-size: 9px; letter-spacing: .09em; text-transform: uppercase; }
-  .hl-cascade { display: flex; align-items: center; gap: 6px; overflow-x: auto; padding: 11px 12px 8px; scrollbar-width: thin; }
-  .hl-node { white-space: nowrap; border-radius: 999px; padding: 7px 10px; font: 700 10px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; border: 1px solid rgba(85,215,255,.24); background: rgba(12,34,44,.82); color: #cdeffd; }
+  .hl-cascade { display: flex; align-items: center; gap: 6px; overflow-x: auto; overflow-y: hidden; padding: 11px 12px 8px; scrollbar-width: thin; min-width: 0; }
+  .hl-node { white-space: nowrap; border-radius: 999px; padding: 7px 10px; font: 700 10px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; border: 1px solid rgba(85,215,255,.24); background: rgba(12,34,44,.82); color: #cdeffd; flex: 0 0 auto; }
   .hl-node.warn { border-color: rgba(255,155,71,.42); background: rgba(66,39,20,.64); color: #ffd9b7; }
   .hl-node.critical { border-color: rgba(255,95,86,.56); background: rgba(65,18,17,.72); color: #ffd0cd; }
   .hl-arrow { color: #557889; font-size: 14px; flex: 0 0 auto; }
-  .hl-riskbar { margin: 0 12px 12px; padding: 9px 10px; border-radius: 10px; display:flex; align-items:center; justify-content:space-between; background: rgba(5,12,18,.62); border: 1px solid var(--line); }
+  .hl-riskbar { margin: 0 12px 12px; padding: 9px 10px; border-radius: 10px; display:flex; align-items:center; justify-content:space-between; gap:8px; background: rgba(5,12,18,.62); border: 1px solid var(--line); }
   .hl-risk-low { color: var(--green); }
   .hl-risk-escalate { color: var(--orange); }
   .hl-risk-critical { color: var(--red); }
-  .hl-feed { display: grid; gap: 6px; }
-  .hl-log { display: grid; grid-template-columns: 48px 76px 1fr; gap: 7px; font: 10px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #bfd3de; }
+  .hl-feed { display: grid; gap: 6px; min-width: 0; }
+  .hl-log { display: grid; grid-template-columns: 48px 76px minmax(0,1fr); gap: 7px; font: 10px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #bfd3de; min-width: 0; }
+  .hl-log span:last-child { min-width: 0; overflow-wrap: anywhere; }
   .hl-log-time { color: #6f8796; }
   .hl-tag { border-radius: 999px; padding: 2px 6px; text-align: center; font-size: 9px; font-weight: 800; }
   .hl-tag-info { background: rgba(85,167,255,.13); color: #9bc9ff; }
   .hl-tag-warning { background: rgba(255,155,71,.14); color: #ffbf86; }
   .hl-tag-cascade { background: rgba(255,95,86,.16); color: #ff9d97; }
   .hl-tag-intervention { background: rgba(95,227,161,.13); color: #98f1c2; }
-  .hl-brand { display:flex; align-items:center; gap:9px; }
-  .hl-dot { width:9px; height:9px; border-radius:50%; background: var(--cyan); box-shadow: 0 0 16px rgba(85,215,255,.8); }
-  .hl-scroll { overflow:auto; }
-  @media (max-width: 1080px) { .hl-metrics { grid-template-columns: repeat(3,1fr); } }
-  @media (max-width: 760px) { .hl-metrics { grid-template-columns: repeat(2,1fr); } }
+  .hl-brand { display:flex; align-items:center; gap:9px; min-width:0; }
+  .hl-dot { width:9px; height:9px; border-radius:50%; background: var(--cyan); box-shadow: 0 0 16px rgba(85,215,255,.8); flex:0 0 auto; }
+  .hl-scroll { flex: 1 1 auto; min-height: 0; min-width: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(85,215,255,.28) transparent; }
+  .hl-scroll::-webkit-scrollbar { width: 7px; }
+  .hl-scroll::-webkit-scrollbar-thumb { background: rgba(85,215,255,.24); border-radius: 999px; }
+  .hl-scroll::-webkit-scrollbar-track { background: transparent; }
+  @media (max-width: 1180px) {
+    .hl-metrics { left: 328px !important; right: 328px !important; }
+  }
+  @media (max-width: 960px) {
+    .hl-metrics { left: 304px !important; right: 304px !important; grid-template-columns: repeat(3,minmax(0,1fr)); }
+    .hl-summary { padding: 11px 12px; }
+    .hl-body { padding: 0 12px 12px; }
+    .hl-grid3 { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  }
+  @media (max-width: 760px) {
+    .hl-metrics { left: 12px !important; right: 12px !important; top: 82px !important; grid-template-columns: repeat(2,minmax(0,1fr)); }
+    .hl-metric { padding: 9px 10px; }
+    .hl-metric-value { font-size: 18px; }
+    .hl-grid2, .hl-grid3 { grid-template-columns: 1fr; }
+    .hl-summary { min-height: 46px; }
+    .hl-log { grid-template-columns: 42px 72px minmax(0,1fr); }
+  }
 `;
 document.head.appendChild(style);
 
@@ -159,19 +179,19 @@ function card(title: string, subtitle = '', open = true) {
 
 const topBar = document.createElement('div');
 topBar.className = 'hl-glass';
-topBar.style.cssText = 'position:fixed;left:18px;right:18px;top:16px;height:58px;z-index:20;padding:11px 15px;display:flex;align-items:center;justify-content:space-between;gap:15px';
+topBar.style.cssText = 'position:fixed;left:18px;right:18px;top:16px;height:58px;z-index:20;padding:11px 15px;display:flex;align-items:center;justify-content:space-between;gap:15px;min-width:0';
 document.body.appendChild(topBar);
 const brand = document.createElement('div');
 brand.className = 'hl-brand';
 brand.innerHTML = `<span class="hl-dot"></span><div><div style="font-size:15px;font-weight:900;letter-spacing:.05em">HAZARDLENS</div><div class="hl-kicker">TACTICAL DIGITAL TWIN · DER-02</div></div>`;
 topBar.appendChild(brand);
 const status = document.createElement('div');
-status.style.cssText = 'font:700 10px ui-monospace,monospace;color:var(--green);letter-spacing:.08em';
+status.style.cssText = 'font:700 10px ui-monospace,monospace;color:var(--green);letter-spacing:.08em;white-space:nowrap';
 status.textContent = '● FACILITY LINKED';
 topBar.appendChild(status);
 
 const leftRail = document.createElement('div');
-leftRail.style.cssText = 'position:fixed;left:18px;top:88px;bottom:18px;width:340px;z-index:15;display:flex;flex-direction:column;gap:10px;pointer-events:none';
+leftRail.style.cssText = 'position:fixed;left:18px;top:88px;bottom:18px;width:340px;height:auto;z-index:15;display:flex;flex-direction:column;gap:10px;pointer-events:none;min-height:0';
 document.body.appendChild(leftRail);
 const leftInner = document.createElement('div');
 leftInner.className = 'hl-scroll';
@@ -208,20 +228,19 @@ const faultSelect = selectControl([
   { value: 'power_loss', label: 'POWER LOSS' },
   { value: 'structural_damage', label: 'STRUCTURAL DAMAGE' }
 ]);
-faultSelect.style.marginTop = '8px';
 disturbance.body.appendChild(text('DISTURBANCE', true));
 disturbance.body.appendChild(faultSelect);
 const severityWrap = document.createElement('div');
-severityWrap.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:10px';
+severityWrap.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:10px;min-width:0';
 severityWrap.appendChild(text('SEVERITY', true));
 const severity = document.createElement('input');
-severity.type = 'range'; severity.min='0.1'; severity.max='1'; severity.step='0.1'; severity.value='0.6'; severity.style.flex='1';
+severity.type = 'range'; severity.min='0.1'; severity.max='1'; severity.step='0.1'; severity.value='0.6'; severity.style.flex='1'; severity.style.minWidth='0';
 const sevValue = document.createElement('b'); sevValue.textContent = '60%';
 severity.oninput = () => sevValue.textContent = `${Math.round(Number(severity.value) * 100)}%`;
 severityWrap.append(severity, sevValue);
 disturbance.body.appendChild(severityWrap);
 const windRow = document.createElement('div');
-windRow.className = 'hl-grid2'; windRow.style.marginTop='10px';
+windRow.className = 'hl-grid2';
 const windSelect = selectControl([
   { value:'East', label:'WIND → EAST' }, { value:'West', label:'WIND → WEST' },
   { value:'North', label:'WIND → NORTH' }, { value:'South', label:'WIND → SOUTH' }
@@ -236,7 +255,6 @@ const inject = button('⚠  INJECT DISTURBANCE', () => {
   const [windX, windZ] = winds[windSelect.value];
   sim.injectIncident({ assetId:assetSelect.value, mode:faultSelect.value as FaultMode, severity:Number(severity.value), windX, windZ });
 }, 'hl-btn-primary');
-inject.style.marginTop='10px';
 disturbance.body.appendChild(inject);
 
 const response = card('Response & Countermeasures', 'act on the simulated facility', true);
@@ -263,7 +281,8 @@ simGrid.appendChild(button('RESUME', () => sim.running = true, 'hl-btn-cyan'));
 simGrid.appendChild(button('RESET', () => { sim.reset(); inspector.show(); }));
 simControls.body.appendChild(simGrid);
 const speed = selectControl([{value:'0.5',label:'0.5×'},{value:'1',label:'1×'},{value:'2',label:'2×'},{value:'4',label:'4×'}], '1');
-speed.style.marginTop='8px'; speed.onchange=()=>sim.speed=Number(speed.value); simControls.body.appendChild(speed);
+simControls.body.appendChild(speed);
+speed.onchange=()=>sim.speed=Number(speed.value);
 
 const cascadeCard = card('Domino Cascade Chain', 'live consequence propagation', true);
 leftInner.appendChild(cascadeCard.root);
@@ -277,7 +296,7 @@ riskBar.innerHTML='<span class="hl-kicker">DOMINO RISK</span><b class="hl-risk-l
 cascadeCard.body.appendChild(riskBar);
 
 const rightRail = document.createElement('div');
-rightRail.style.cssText = 'position:fixed;right:18px;top:88px;bottom:18px;width:360px;z-index:15;display:flex;flex-direction:column;gap:10px;pointer-events:none';
+rightRail.style.cssText = 'position:fixed;right:18px;top:88px;bottom:18px;width:360px;height:auto;z-index:15;display:flex;flex-direction:column;gap:10px;pointer-events:none;min-height:0';
 document.body.appendChild(rightRail);
 const rightInner = document.createElement('div');
 rightInner.className='hl-scroll'; rightInner.style.cssText='display:flex;flex-direction:column;gap:10px;pointer-events:auto;padding-left:4px'; rightRail.appendChild(rightInner);
