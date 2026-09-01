@@ -66,7 +66,8 @@ export class EmergencyPlanner {
         const hazard = this.hazardPenalty(snapshot, b);
         const routePenalty = edge.type === 'emergency_route' ? 0.8 : edge.type === 'walkway' ? 1 : 1.15;
         const failurePenalty = this.assetFailurePenalty(snapshot, edge.to);
-        const weight = base * (1 + hazard * routePenalty) + failurePenalty;
+        const hazardWeight = 1 + hazard * routePenalty * 2;
+        const weight = base * hazardWeight + failurePenalty;
         const candidate = (dist.get(current) ?? Infinity) + weight;
         if (candidate < (dist.get(edge.to) ?? Infinity)) { dist.set(edge.to, candidate); previous.set(edge.to, current); }
       }
