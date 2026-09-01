@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { SimulationRuntime } from "../src/core/runtime.js";
 import { FireTwin } from "../src/twins/hazards.js";
-import { PipeTwin, TankTwin } from "../src/twins/process.js";
+import { PipeTwin, TankTwin, WorkerTwin } from "../src/twins/process.js";
 import { CoolingTwin, EvacuationTwin, IsolationTwin, SuppressionTwin } from "../src/interventions/index.js";
 
 test("isolation materially reduces a pipe release",()=>{
@@ -38,14 +38,10 @@ test("suppression is a stateful intervention",()=>{
  assert.equal(fire.state.active,false);
 });
 
-test("evacuation command moves all worker twins in zone",()=>{
- const rt=new SimulationRuntime([new (class extends TankTwin { constructor(){super("T",{x:0,y:0,z:0})} })(),new EvacuationTwin("E",{x:0,y:0,z:0}),]);
- const worker=new (awaitableWorker as any)();
- rt.add(worker);
+test("evacuation command moves worker twins",()=>{
+ const worker=new WorkerTwin("W",{x:2,y:0,z:0});
+ const rt=new SimulationRuntime([worker,new EvacuationTwin("E",{x:0,y:0,z:0})]);
  rt.emit({type:"evacuation.command",sourceId:"operator",targetId:"E",payload:{zoneId:"zone-a"}});
  rt.run(.25,.25);
  assert.equal(worker.state.metadata.evacuation,"moving");
 });
-
-class awaitableWorker extends (requireWorker() as any) {}
-function requireWorker(){ return class WorkerStub extends TankTwin { constructor(){ super("W",{x:2,y:0,z:0}); (this.state as any).kind="worker"; this.state.metadata.evacuation="none"; } onEvent(event:any,context:any){ if(event.type==="evacuation.command"){ this.state.metadata.evacuation="moving"; } } } }
