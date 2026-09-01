@@ -29,7 +29,7 @@ export type EventType =
   | "fault.pipe_leak" | "fault.asset" | "release.created" | "release.updated"
   | "release.ignited" | "fire.created" | "thermal.exposure" | "overpressure.received"
   | "asset.degraded" | "asset.failed" | "valve.command" | "pump.command"
-  | "shutdown.command" | "suppression.command" | "cooling.command"
+  | "power.loss" | "shutdown.command" | "suppression.command" | "cooling.command"
   | "evacuation.command" | "route.blocked" | "geometry.changed";
 
 export interface SimEvent<T extends Record<string, unknown> = Record<string, unknown>> {
