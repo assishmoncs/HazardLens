@@ -28,8 +28,10 @@ export class SimulationRuntime {
     return this.registry.get(id);
   }
 
-  emit<T extends Record<string, unknown>>(event: Omit<SimEvent<T>, "id" | "time">): void {
-    this.queue.push(structuredClone({ ...event, id: `evt-${++this.sequence}`, time: this.time }));
+  emit<T extends Record<string, unknown>>(event: Omit<SimEvent<T>, "id" | "time">): string {
+    const id = `evt-${++this.sequence}`;
+    this.queue.push(structuredClone({ ...event, id, time: this.time }));
+    return id;
   }
 
   step(dt: number): void {
@@ -62,13 +64,17 @@ export class SimulationRuntime {
       time: this.time,
       twins: [...this.registry.values()].map(twin => structuredClone(twin.state)),
       events: structuredClone(events),
-      totalEvents: this.processedEvents,
-      historyTruncated: this.processedEvents > events.length,
     };
   }
 
   clone(): SimulationRuntime {
-    const copy = new SimulationRuntime([...this.registry.values()].map(twin => twin.clone()));
+    const copy = new SimulationRuntime([...this.registry.values()].map(twin => {
+      const cloned = twin.clone();
+      if (twin.metadata && cloned.metadata) {
+        Object.assign(cloned.metadata, structuredClone(twin.metadata));
+      }
+      return cloned;
+    }));
     copy.time = this.time;
     copy.sequence = this.sequence;
     copy.processedEvents = this.processedEvents;
