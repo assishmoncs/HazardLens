@@ -64,15 +64,15 @@ export class SimulationRuntime {
       time: this.time,
       twins: [...this.registry.values()].map(twin => structuredClone(twin.state)),
       events: structuredClone(events),
+      totalEvents: this.processedEvents,
+      historyTruncated: this.processedEvents > events.length,
     };
   }
 
   clone(): SimulationRuntime {
     const copy = new SimulationRuntime([...this.registry.values()].map(twin => {
       const cloned = twin.clone();
-      if (twin.metadata && cloned.metadata) {
-        Object.assign(cloned.metadata, structuredClone(twin.metadata));
-      }
+      if (twin.metadata && cloned.metadata) Object.assign(cloned.metadata, structuredClone(twin.metadata));
       return cloned;
     }));
     copy.time = this.time;
@@ -84,12 +84,7 @@ export class SimulationRuntime {
   }
 
   private context(): TwinContext {
-    return {
-      now: this.time,
-      get: id => this.registry.get(id),
-      twins: () => [...this.registry.values()],
-      emit: event => this.emit(event),
-    };
+    return { now: this.time, get: id => this.registry.get(id), twins: () => [...this.registry.values()], emit: event => this.emit(event) };
   }
 
   private materialize(event: SimEvent): void {
@@ -104,17 +99,16 @@ export class SimulationRuntime {
       const existing = [...this.registry.values()].find(twin =>
         twin instanceof ReleaseTwin && twin.sourceId === event.sourceId && twin.state.active,
       ) as ReleaseTwin | undefined;
-      if (existing) {
-        existing.rateKgS = rate;
-        return;
-      }
+      if (existing) { existing.rateKgS = rate; return; }
       this.add(new ReleaseTwin(`release-${event.id}`, origin, event.sourceId, rate));
       return;
     }
 
     const intensity = Number(payload.intensityMw);
     if (!Number.isFinite(intensity) || intensity <= 0) throw new Error("Invalid fire intensity");
-    this.add(new FireTwin(`fire-${event.id}`, origin, intensity, event.sourceId));
+    // Current FireTwin derives its own downstream source behavior from its intensity;
+    // preserve the initiating event in the event fabric rather than adding a duplicate source field.
+    this.add(new FireTwin(`fire-${event.id}`, origin, intensity));
   }
 
   private drainEvents(): void {
@@ -129,8 +123,6 @@ export class SimulationRuntime {
       if (event.targetId) this.registry.get(event.targetId)?.onEvent(event, context);
       else for (const twin of [...this.registry.values()]) twin.onEvent(event, context);
     }
-    if (this.history.length > this.historyLimit) {
-      this.history.splice(0, this.history.length - this.historyLimit);
-    }
+    if (this.history.length > this.historyLimit) this.history.splice(0, this.history.length - this.historyLimit);
   }
 }
