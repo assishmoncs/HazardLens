@@ -1,9 +1,9 @@
 import { SimulationRuntime } from '../../../src/core/runtime.js';
-import type { WorldSnapshot, TwinState } from '../../../src/core/types.js';
+import type { WorldSnapshot, TwinState, Vec3 } from '../../../src/core/types.js';
 import { IgnitionSourceTwin, PipeTwin, TankTwin, WallTwin, WeatherTwin } from '../../../src/twins/process.js';
 import { WorkerTwin, RouteTwin } from '../../../src/twins/infrastructure.js';
+import { EvacuationTwin } from '../../../src/interventions/index.js';
 
-export type IncidentAssetKind = 'pipe' | 'tank' | 'valve' | 'pump';
 export type FaultMode = 'leak' | 'rupture' | 'overheat' | 'failure';
 
 export interface IncidentConfig {
@@ -35,6 +35,7 @@ export class ViewerSimulation {
       new WorkerTwin('WORKER-01', { x: 3, y: 1, z: 2 }),
       new WorkerTwin('WORKER-02', { x: 11, y: 1, z: 4 }),
       new RouteTwin('ROUTE-A', { x: 0, y: 0, z: 8 }),
+      new EvacuationTwin('EVAC', { x: -5, y: 0, z: 8 }, 'zone-a'),
     ]);
   }
 
@@ -46,15 +47,14 @@ export class ViewerSimulation {
   }
 
   injectIncident(config: IncidentConfig) {
-    const wind = this.runtime.get('WEATHER');
-    if (wind) {
-      wind.onEvent({ id: 'ui-wind', type: 'fault.asset', time: this.runtime.time, sourceId: 'operator', targetId: 'WEATHER', payload: { windX: config.windX, windZ: config.windZ } }, {
-        now: this.runtime.time,
-        get: id => this.runtime.get(id),
-        twins: () => this.runtime.snapshot().twins as any,
-        emit: e => this.runtime.emit(e),
-      } as any);
+    const weather = this.runtime.get('WEATHER') as (import('../../../src/core/types.js').Twin & { windX?: number; windZ?: number }) | undefined;
+    if (weather) {
+      weather.windX = config.windX;
+      weather.windZ = config.windZ;
+      weather.state.metadata.windX = config.windX;
+      weather.state.metadata.windZ = config.windZ;
     }
+
     const severity = Math.max(0.1, Math.min(1, config.severity));
     if (config.assetId.startsWith('P-')) {
       const rateKgS = config.mode === 'rupture' ? 1.2 + severity * 2.2 : 0.25 + severity * 0.85;
@@ -72,7 +72,7 @@ export class ViewerSimulation {
 
   suppress() {
     for (const t of this.runtime.snapshot().twins.filter(t => t.kind === 'fire' && t.active)) {
-      this.runtime.emit({ type: 'suppression.command', sourceId: 'operator', targetId: t.id, payload: { strength: 10 } });
+      this.runtime.emit({ type:'suppression.command', sourceId:'operator', targetId:t.id, payload:{strength:10} });
     }
   }
 
@@ -80,15 +80,15 @@ export class ViewerSimulation {
     const snap = this.runtime.snapshot();
     if (mode === 'isolate') {
       const pipe = snap.twins.find(t => t.kind === 'pipe' && t.active);
-      if (pipe) this.runtime.emit({ type: 'valve.command', sourceId: 'operator', targetId: pipe.id, payload: { action: 'close', pipeId: pipe.id } });
+      if (pipe) this.runtime.emit({ type:'valve.command', sourceId:'operator', targetId:pipe.id, payload:{action:'close', pipeId:pipe.id} });
     }
     if (mode === 'cool') {
       for (const t of snap.twins.filter(t => t.kind === 'tank' && t.active)) {
-        this.runtime.emit({ type: 'cooling.command', sourceId: 'operator', targetId: t.id, payload: { enabled: true, rateKw: 350, targetId: t.id } });
+        this.runtime.emit({ type:'cooling.command', sourceId:'operator', targetId:t.id, payload:{enabled:true,rateKw:350,targetId:t.id} });
       }
     }
     if (mode === 'suppress') this.suppress();
-    if (mode === 'evacuate') this.runtime.emit({ type: 'evacuation.command', sourceId: 'operator', targetId: 'EVAC', payload: { zoneId: 'zone-a' } });
+    if (mode === 'evacuate') this.runtime.emit({ type:'evacuation.command', sourceId:'operator', targetId:'EVAC', payload:{zoneId:'zone-a'} });
   }
 
   getIncident(): IncidentConfig | null { return this.lastIncident ? { ...this.lastIncident } : null; }
