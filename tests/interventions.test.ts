@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { SimulationRuntime } from "../src/core/runtime.js";
 import { FireTwin } from "../src/twins/hazards.js";
-import { PipeTwin, TankTwin, WorkerTwin } from "../src/twins/process.js";
+import { PipeTwin, TankTwin } from "../src/twins/process.js";
+import { WorkerTwin } from "../src/twins/infrastructure.js";
 import { CoolingTwin, EvacuationTwin, IsolationTwin, SuppressionTwin } from "../src/interventions/index.js";
 
 test("isolation materially reduces a pipe release",()=>{
