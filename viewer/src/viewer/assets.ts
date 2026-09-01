@@ -1,90 +1,43 @@
 import * as THREE from 'three';
 
-const material = (color: number, metalness = .55, roughness = .38) => new THREE.MeshStandardMaterial({ color, metalness, roughness });
-const detail = material(0x9aa7b2, .7, .28);
+const material = (color: number, metalness = .58, roughness = .34) => new THREE.MeshStandardMaterial({ color, metalness, roughness });
+const detail = material(0x9aa7b2, .72, .28);
+const shadow = (o: THREE.Object3D) => { o.traverse(n => { if (n instanceof THREE.Mesh) { n.castShadow = true; n.receiveShadow = true; } }); return o; };
 
 export function tankAsset() {
   const group = new THREE.Group();
-  const shell = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 4, 48), material(0x667685, .7, .3));
-  const top = new THREE.Mesh(new THREE.CylinderGeometry(1.78, 1.78, .14, 48), material(0x8d9aa7, .65, .25)); top.position.y = 2.06;
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(1.75, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), material(0x778896, .65, .3)); dome.position.y = 2.05;
-  const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(.16, .16, .7, 16), detail); nozzle.position.set(0, 2.55, 0);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(2.02, .07, 12, 48), detail); ring.rotation.x = Math.PI / 2; ring.position.y = 1.35;
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, .25, 48), material(0x3e4953, .8, .32)); base.position.y = -2.12;
-  group.add(shell, top, dome, nozzle, ring, base); return group;
+  const steel = material(0x778895, .72, .27), dark = material(0x29343b, .72, .35);
+  const shell = new THREE.Mesh(new THREE.CylinderGeometry(2.15, 2.15, 5.2, 40), steel); shell.position.y = 2.6;
+  const roof = new THREE.Mesh(new THREE.SphereGeometry(2.15, 32, 12, 0, Math.PI * 2, 0, Math.PI / 2), steel); roof.position.y = 5.18;
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(2.22, .075, 8, 48), dark); ring.rotation.x = Math.PI / 2; ring.position.y = 4.45;
+  const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(.2, .2, .85, 14), detail); nozzle.position.y = 6.05;
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(2.35, 2.35, .25, 40), dark); base.position.y = -.15;
+  const ladder = new THREE.Mesh(new THREE.BoxGeometry(.09, 4.8, .09), dark); ladder.position.set(2.2, 2.2, 0);
+  const gauge = new THREE.Mesh(new THREE.CylinderGeometry(.22, .22, .12, 16), material(0xe5ecef, .35, .2)); gauge.rotation.x = Math.PI / 2; gauge.position.set(0, 3.0, 2.18);
+  group.add(shell, roof, ring, nozzle, base, ladder, gauge); return shadow(group);
 }
 
-export function pressureVesselAsset() { const group = tankAsset(); group.scale.set(1.05, .85, 1.05); return group; }
-
-export function pipeAsset(length = 8) {
-  const group = new THREE.Group();
-  const pipe = new THREE.Mesh(new THREE.CylinderGeometry(.22, .22, length, 24), material(0x9ba5ae, .72, .25)); pipe.rotation.z = Math.PI / 2;
-  const joint = new THREE.Mesh(new THREE.TorusGeometry(.35, .08, 12, 24), detail); joint.rotation.y = Math.PI / 2;
-  const support1 = new THREE.Mesh(new THREE.BoxGeometry(.18, .65, .18), detail); support1.position.set(-length * .28, -.38, 0);
-  const support2 = support1.clone(); support2.position.x = length * .28; group.add(pipe, joint, support1, support2); return group;
-}
-
-export function wallAsset() {
-  const group = new THREE.Group();
-  const wall = new THREE.Mesh(new THREE.BoxGeometry(8, 4, .35), material(0x58636d, .3, .7));
-  const cap = new THREE.Mesh(new THREE.BoxGeometry(8.15, .1, .42), detail); cap.position.y = 2.05; group.add(wall, cap); return group;
-}
-
-export function valveAsset() {
-  const group = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(.45, .45, .75, 20), detail); body.rotation.z = Math.PI / 2;
-  const stem = new THREE.Mesh(new THREE.CylinderGeometry(.08, .08, .7, 12), detail); stem.position.y = .55;
-  const wheel = new THREE.Mesh(new THREE.TorusGeometry(.34, .07, 10, 24), material(0xc2ccd3, .7, .22)); wheel.rotation.x = Math.PI / 2; wheel.position.y = .9;
-  group.add(body, stem, wheel); return group;
-}
-
-export function pumpAsset() {
-  const group = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(.55, .55, 1.5, 24), material(0x526372, .7, .32)); body.rotation.z = Math.PI / 2;
-  const motor = new THREE.Mesh(new THREE.CylinderGeometry(.48, .48, 1.05, 24), material(0x34424e, .8, .3)); motor.rotation.z = Math.PI / 2; motor.position.x = -.95;
-  const base = new THREE.Mesh(new THREE.BoxGeometry(2.8, .2, 1.15), material(0x36414b, .7, .45)); base.position.y = -.65; group.add(body, motor, base); return group;
-}
-
-export function heatExchangerAsset() {
-  const group = new THREE.Group();
-  const shell = new THREE.Mesh(new THREE.CylinderGeometry(.6, .6, 3.2, 28), material(0x697b88, .7, .28)); shell.rotation.z = Math.PI / 2;
-  for (let x = -1.4; x <= 1.4; x += .7) { const band = new THREE.Mesh(new THREE.TorusGeometry(.62, .055, 10, 24), detail); band.rotation.y = Math.PI / 2; band.position.x = x; group.add(band); }
-  group.add(shell); return group;
-}
-
-export function reactorAsset() { const group = tankAsset(); group.scale.set(1.25, 1.25, 1.25); return group; }
-
-export function columnAsset() {
-  const group = new THREE.Group();
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(.22, .32, 6, 20), material(0x687986, .7, .3));
-  const foot = new THREE.Mesh(new THREE.BoxGeometry(1, .3, 1), material(0x3c4851, .75, .4)); foot.position.y = -3.15;
-  group.add(shaft, foot); return group;
-}
-
-export function windowAsset() {
-  return new THREE.Mesh(new THREE.BoxGeometry(1.4, 1, .08), new THREE.MeshStandardMaterial({ color: 0x5bb7cf, metalness: .2, roughness: .18, emissive: 0x15485a, emissiveIntensity: .3 }));
-}
-
-export function doorAsset() {
-  const group = new THREE.Group();
-  const slab = new THREE.Mesh(new THREE.BoxGeometry(1.1, 2.3, .12), material(0x33414b, .5, .5));
-  const handle = new THREE.Mesh(new THREE.SphereGeometry(.05, 10, 8), detail); handle.position.set(.32, 0, -.08); group.add(slab, handle); return group;
-}
-
-export function routeAsset() {
-  return new THREE.Mesh(new THREE.BoxGeometry(7, .06, 1.2), new THREE.MeshStandardMaterial({ color: 0x24506a, transparent: true, opacity: .72, emissive: 0x092331, emissiveIntensity: .4 }));
-}
-
-export function buildingAsset() {
-  const group = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.BoxGeometry(14, 5, 8), material(0x303b45, .35, .62));
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(14.6, .35, 8.6), material(0x46545f, .7, .35)); roof.position.y = 2.68;
-  for (let x = -5.2; x <= 5.2; x += 2.6) { const window = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.2, .08), new THREE.MeshStandardMaterial({ color: 0x5bb7cf, metalness: .25, roughness: .18, emissive: 0x15485a, emissiveIntensity: .35 })); window.position.set(x, .5, 4.04); group.add(window); }
-  group.add(body, roof); return group;
-}
-
-export function hydrantAsset() { const group = new THREE.Group(); const stem = new THREE.Mesh(new THREE.CylinderGeometry(.22, .27, 1.2, 16), material(0xb0443f, .65, .3)); const cap = new THREE.Mesh(new THREE.SphereGeometry(.3, 16, 8), material(0x9f3632, .65, .3)); cap.position.y = .7; group.add(stem, cap); return group; }
-export function fireMonitorAsset() { const group = new THREE.Group(); const base = new THREE.Mesh(new THREE.CylinderGeometry(.38, .45, .25, 20), detail); const barrel = new THREE.Mesh(new THREE.CylinderGeometry(.17, .24, 1.4, 18), material(0x597280, .65, .3)); barrel.rotation.z = Math.PI / 2; barrel.position.y = .45; group.add(base, barrel); return group; }
-export function workerAsset() { const group = new THREE.Group(); const body = new THREE.Mesh(new THREE.CapsuleGeometry(.16, .45, 6, 12), material(0xc2a13a, .15, .72)); body.position.y=.55; const head = new THREE.Mesh(new THREE.SphereGeometry(.14,16,12),material(0xd5b08d,.05,.9)); head.position.y=.95; group.add(body,head); return group; }
-export function vehicleAsset() { const group=new THREE.Group(); const body=new THREE.Mesh(new THREE.BoxGeometry(1.8,.7,1),material(0xb33a32,.55,.34)); const cab=new THREE.Mesh(new THREE.BoxGeometry(.75,.52,.9),material(0x465866,.65,.28)); cab.position.x=.62; const wheelGeo=new THREE.CylinderGeometry(.22,.22,.12,16); for(const x of [-.6,.6]) for(const z of [-.48,.48]) { const wheel=new THREE.Mesh(wheelGeo,material(0x20262b,.25,.88)); wheel.rotation.z=Math.PI/2; wheel.position.set(x,-.38,z); group.add(wheel); } group.add(body,cab); return group; }
-export function sensorAsset() { const group=new THREE.Group(); const mast=new THREE.Mesh(new THREE.CylinderGeometry(.04,.05,.9,12),detail); mast.position.y=.45; const head=new THREE.Mesh(new THREE.SphereGeometry(.13,16,12),new THREE.MeshStandardMaterial({color:0x67c4d8,emissive:0x1f7487,emissiveIntensity:1.3})); head.position.y=.95; group.add(mast,head); return group; }
+export function pressureVesselAsset() { const group = tankAsset(); group.scale.set(1.05, .82, 1.05); return group; }
+export function reactorAsset(height = 6.5) { const group = new THREE.Group(); const body = new THREE.Mesh(new THREE.CylinderGeometry(1.65, 1.9, height, 28), material(0x6c7b84, .72, .3)); body.position.y = height / 2; const top = new THREE.Mesh(new THREE.SphereGeometry(1.65, 28, 12, 0, Math.PI * 2, 0, Math.PI / 2), material(0x82909a, .7, .28)); top.position.y = height; const jacket = new THREE.Mesh(new THREE.TorusGeometry(1.78, .09, 8, 32), detail); jacket.rotation.x = Math.PI / 2; jacket.position.y = height * .62; const legs = [-.9,.9].flatMap(x => { const m = new THREE.Mesh(new THREE.BoxGeometry(.16, .8, .16), detail); m.position.set(x, -.4, 0); return [m]; }); group.add(body, top, jacket, ...legs); return shadow(group); }
+export function pipeAsset(length = 8) { const group = new THREE.Group(); const pipe = new THREE.Mesh(new THREE.CylinderGeometry(.24,.24,length,24), material(0x9ba5ae,.72,.25)); pipe.rotation.z=Math.PI/2; const joint = new THREE.Mesh(new THREE.TorusGeometry(.36,.085,10,24),detail); joint.rotation.y=Math.PI/2; const left=joint.clone(); left.position.x=-length*.28; const right=joint.clone(); right.position.x=length*.28; const s1=new THREE.Mesh(new THREE.BoxGeometry(.16,.65,.16),detail); s1.position.set(-length*.28,-.38,0); const s2=s1.clone(); s2.position.x=length*.28; group.add(pipe,joint,left,right,s1,s2); return shadow(group); }
+export function wallAsset() { return shadow(new THREE.Mesh(new THREE.BoxGeometry(8,4,.35),material(0x59636a,.2,.82))); }
+export function valveAsset() { const group=new THREE.Group(); const body=new THREE.Mesh(new THREE.CylinderGeometry(.42,.42,.72,20),detail); body.rotation.z=Math.PI/2; const stem=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.72,12),detail); stem.position.y=.55; const wheel=new THREE.Mesh(new THREE.TorusGeometry(.35,.065,10,24),material(0xc2ccd3,.72,.22)); wheel.rotation.x=Math.PI/2; wheel.position.y=.92; group.add(body,stem,wheel); return shadow(group); }
+export function pumpAsset() { const group=new THREE.Group(); const body=new THREE.Mesh(new THREE.CylinderGeometry(.58,.58,1.55,24),material(0x526372,.7,.32)); body.rotation.z=Math.PI/2; const motor=new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,1.15,24),material(0x34424e,.8,.3)); motor.rotation.z=Math.PI/2; motor.position.x=-.95; const base=new THREE.Mesh(new THREE.BoxGeometry(2.9,.2,1.2),material(0x36414b,.7,.45)); base.position.y=-.67; const coupling=new THREE.Mesh(new THREE.CylinderGeometry(.28,.28,.22,18),detail); coupling.rotation.z=Math.PI/2; coupling.position.x=.62; group.add(body,motor,base,coupling); return shadow(group); }
+export function compressorAsset() { const group=new THREE.Group(); const body=new THREE.Mesh(new THREE.BoxGeometry(3.8,1.8,2.4),material(0x4f7a88,.62,.32)); body.position.y=1; const motor=new THREE.Mesh(new THREE.CylinderGeometry(.72,.72,2.6,24),material(0x53636d,.72,.3)); motor.rotation.z=Math.PI/2; motor.position.x=-.8; const fanL=new THREE.Mesh(new THREE.TorusGeometry(.75,.13,10,24),detail); fanL.position.set(1.35,1.0,1.25); const fanR=fanL.clone(); fanR.position.z=-1.25; group.add(body,motor,fanL,fanR); return shadow(group); }
+export function heatExchangerAsset() { const group=new THREE.Group(); const shell=new THREE.Mesh(new THREE.CylinderGeometry(.62,.62,3.2,28),material(0x697b88,.7,.28)); shell.rotation.z=Math.PI/2; for(let x=-1.4;x<=1.4;x+=.7){const band=new THREE.Mesh(new THREE.TorusGeometry(.64,.055,10,24),detail);band.rotation.y=Math.PI/2;band.position.x=x;group.add(band);} group.add(shell); return shadow(group); }
+export function coolingAsset() { const group=new THREE.Group(); const tower=new THREE.Mesh(new THREE.CylinderGeometry(3.5,5,8,24),material(0x718f9a,.2,.7)); tower.position.y=4; const rim=new THREE.Mesh(new THREE.TorusGeometry(3.5,.3,8,24),material(0xa5bdc8)); rim.rotation.x=Math.PI/2; rim.position.y=8; group.add(tower,rim); return shadow(group); }
+export function columnAsset() { const group=new THREE.Group(); const shaft=new THREE.Mesh(new THREE.CylinderGeometry(.34,.48,7,22),material(0x687986,.7,.3)); shaft.position.y=3.5; const foot=new THREE.Mesh(new THREE.BoxGeometry(1.1,.3,1.1),material(0x3c4851,.75,.4)); foot.position.y=-.15; group.add(shaft,foot); return shadow(group); }
+export function windowAsset() { return shadow(new THREE.Mesh(new THREE.BoxGeometry(1.4,1,.08),new THREE.MeshStandardMaterial({color:0x5bb7cf,metalness:.2,roughness:.18,emissive:0x15485a,emissiveIntensity:.3}))); }
+export function doorAsset() { const group=new THREE.Group(); const slab=new THREE.Mesh(new THREE.BoxGeometry(1.1,2.3,.12),material(0x33414b,.5,.5)); const handle=new THREE.Mesh(new THREE.SphereGeometry(.05,10,8),detail); handle.position.set(.32,0,-.08); group.add(slab,handle); return shadow(group); }
+export function routeAsset() { return new THREE.Mesh(new THREE.BoxGeometry(7,.06,1.2),new THREE.MeshStandardMaterial({color:0x24506a,transparent:true,opacity:.72,emissive:0x092331,emissiveIntensity:.4})); }
+export function buildingAsset() { const group=new THREE.Group(); const body=new THREE.Mesh(new THREE.BoxGeometry(14,5,8),material(0x303b45,.35,.62)); body.position.y=2.5; const roof=new THREE.Mesh(new THREE.BoxGeometry(14.6,.35,8.6),material(0x46545f,.7,.35)); roof.position.y=5.18; for(let x=-5.2;x<=5.2;x+=2.6){const w=new THREE.Mesh(new THREE.BoxGeometry(1.4,1.2,.08),new THREE.MeshStandardMaterial({color:0x5bb7cf,metalness:.25,roughness:.18,emissive:0x15485a,emissiveIntensity:.35})); w.position.set(x,2.2,4.04); group.add(w);} group.add(body,roof); return shadow(group); }
+export function controlAsset() { const group=new THREE.Group(); const body=new THREE.Mesh(new THREE.BoxGeometry(4.5,1.4,2.2),material(0x314a5a,.2,.7)); body.position.y=.7; for(const x of [-1.3,0,1.3]) { const screen=new THREE.Mesh(new THREE.BoxGeometry(1,.75,.06),new THREE.MeshStandardMaterial({color:0x286278,emissive:0x286278,emissiveIntensity:.6})); screen.position.set(x,1.65,-.15); group.add(screen);} return shadow(group); }
+export function emergencyAsset() { const group=new THREE.Group(); const body=new THREE.Mesh(new THREE.BoxGeometry(.85,1.8,.65),material(0xb63327,.3,.6)); body.position.y=.9; const beacon=new THREE.Mesh(new THREE.SphereGeometry(.17,12,8),new THREE.MeshStandardMaterial({color:0xffce65,emissive:0xff8a00,emissiveIntensity:1.4})); beacon.position.y=2; group.add(body,beacon); return shadow(group); }
+export function hydrantAsset() { const group=new THREE.Group(); const stem=new THREE.Mesh(new THREE.CylinderGeometry(.22,.27,1.2,16),material(0xb0443f,.65,.3)); const cap=new THREE.Mesh(new THREE.SphereGeometry(.3,16,8),material(0x9f3632,.65,.3)); cap.position.y=.7; group.add(stem,cap); return shadow(group); }
+export function fireMonitorAsset() { const group=new THREE.Group(); const base=new THREE.Mesh(new THREE.CylinderGeometry(.38,.45,.25,20),detail); const barrel=new THREE.Mesh(new THREE.CylinderGeometry(.17,.24,1.4,18),material(0x597280,.65,.3)); barrel.rotation.z=Math.PI/2; barrel.position.y=.45; group.add(base,barrel); return shadow(group); }
+export function workerAsset() { const group=new THREE.Group(); const body=new THREE.Mesh(new THREE.CapsuleGeometry(.16,.45,6,12),material(0xdac34e,.15,.72)); body.position.y=.55; const head=new THREE.Mesh(new THREE.SphereGeometry(.14,16,12),material(0xd5b08d,.05,.9)); head.position.y=.95; const helmet=new THREE.Mesh(new THREE.SphereGeometry(.17,14,8,0,Math.PI*2,0,Math.PI/2),material(0xf4e3a2,.25,.55)); helmet.position.y=1.08; group.add(body,head,helmet); return shadow(group); }
+export function vehicleAsset() { const group=new THREE.Group(); const body=new THREE.Mesh(new THREE.BoxGeometry(1.8,.7,1),material(0xb33a32,.55,.34)); const cab=new THREE.Mesh(new THREE.BoxGeometry(.75,.52,.9),material(0x465866,.65,.28)); cab.position.x=.62; const wheelGeo=new THREE.CylinderGeometry(.22,.22,.12,16); for(const x of [-.6,.6]) for(const z of [-.48,.48]) { const wheel=new THREE.Mesh(wheelGeo,material(0x20262b,.25,.88)); wheel.rotation.z=Math.PI/2; wheel.position.set(x,-.38,z); group.add(wheel);} group.add(body,cab); return shadow(group); }
+export function sensorAsset() { const group=new THREE.Group(); const mast=new THREE.Mesh(new THREE.CylinderGeometry(.04,.05,.9,12),detail); mast.position.y=.45; const head=new THREE.Mesh(new THREE.SphereGeometry(.13,16,12),new THREE.MeshStandardMaterial({color:0x67c4d8,emissive:0x1f7487,emissiveIntensity:1.3})); head.position.y=.95; group.add(mast,head); return shadow(group); }
+export function roadAsset(length=340,width=10) { const group=new THREE.Group(); const surface=new THREE.Mesh(new THREE.BoxGeometry(length,.05,width),material(0x29353d,0,.95)); group.add(surface); return group; }
+export function ignitionAsset() { const group=new THREE.Group(); const base=new THREE.Mesh(new THREE.BoxGeometry(2.2,1.2,2.2),material(0x303b42,.55,.4)); base.position.y=.6; const motor=new THREE.Mesh(new THREE.CylinderGeometry(.58,.58,1.8,18),material(0x53636d,.7,.32)); motor.rotation.z=Math.PI/2; motor.position.y=1.55; group.add(base,motor); return shadow(group); }
+export function sensorTowerAsset() { const group=new THREE.Group(); const mast=new THREE.Mesh(new THREE.CylinderGeometry(.07,.09,3.8,12),detail); mast.position.y=1.9; const head=new THREE.Mesh(new THREE.SphereGeometry(.2,16,12),new THREE.MeshStandardMaterial({color:0x67c4d8,emissive:0x1f7487,emissiveIntensity:1.3})); head.position.y=3.9; group.add(mast,head); return shadow(group); }
