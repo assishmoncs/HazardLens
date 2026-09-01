@@ -1,15 +1,11 @@
+import { performance } from "node:perf_hooks";
 import type { SimulationRuntime } from "./runtime.js";
 
-export interface RuntimePerformance {
-  simSeconds:number;
-  wallSeconds:number;
-  realTimeFactor:number;
-  twinCount:number;
-  eventCount:number;
-  eventsPerSecond:number;
-}
+export interface RuntimePerformance { simSeconds:number; wallSeconds:number; realTimeFactor:number; twinCount:number; eventCount:number; eventsPerSecond:number; }
 
 export function benchmarkRuntime(runtime:SimulationRuntime,duration:number,dt=.25):RuntimePerformance{
+  if(duration<=0) throw new Error("duration must be positive");
+  if(dt<=0) throw new Error("dt must be positive");
   const start=performance.now();
   const before=runtime.snapshot();
   runtime.run(duration,dt);
