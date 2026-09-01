@@ -1,42 +1,46 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ViewerSimulation } from './sim.js';
 import type { FaultMode, InterventionMode } from './sim.js';
 import { WorldRenderer } from './worldRenderer.js';
 import { TwinInspector } from './inspector.js';
 import { createFacility } from './facility.js';
 import { FacilityGraph } from './facilityGraph.js';
+import { createIndustrialEnvironment } from './sceneEnvironment.js';
 
 const app = document.getElementById('app')!;
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x03070b);
-scene.fog = new THREE.Fog(0x03070b, 48, 190);
+createIndustrialEnvironment(scene);
+scene.fog = new THREE.Fog(0x182127, 70, 175);
 
-const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 1200);
+const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.1, 1200);
 camera.position.set(42, 28, 52);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 app.appendChild(renderer.domElement);
 
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.32, 0.65, 0.84));
+composer.addPass(new OutputPass());
+
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(12, 3, 2);
+controls.target.set(10, 3, 2);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
 
-scene.add(new THREE.HemisphereLight(0xcfe7ff, 0x111820, 1.5));
-const light = new THREE.DirectionalLight(0xffffff, 2.2);
-light.position.set(15, 30, 15);
-scene.add(light);
-
-const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(150, 120),
-  new THREE.MeshStandardMaterial({ color: 0x10171d, roughness: 0.94, metalness: 0.04 })
-);
-ground.rotation.x = -Math.PI / 2;
-scene.add(ground);
+// Keep the existing tactical facility and add the reference repo's richer environment treatment.
 createFacility(scene);
 
 const facility = new FacilityGraph();
@@ -73,34 +77,21 @@ function card(title:string,subtitle='',open=true){const d=document.createElement
 const topBar=document.createElement('div');topBar.className='hl-glass';topBar.style.cssText='position:fixed;left:18px;right:18px;top:16px;height:58px;z-index:20;padding:11px 15px;display:flex;align-items:center;justify-content:space-between;gap:15px;min-width:0';document.body.appendChild(topBar);
 const brand=document.createElement('div');brand.className='hl-brand';brand.innerHTML='<span class="hl-dot"></span><div><div style="font-size:15px;font-weight:900;letter-spacing:.05em">HAZARDLENS</div><div class="hl-kicker">TACTICAL DIGITAL TWIN · DER-02</div></div>';topBar.appendChild(brand);
 const status=document.createElement('div');status.style.cssText='font:700 10px ui-monospace,monospace;color:var(--green);letter-spacing:.08em;white-space:nowrap';status.textContent='● FACILITY LINKED';topBar.appendChild(status);
-
 const leftRail=document.createElement('div');leftRail.style.cssText='position:fixed;left:18px;top:88px;bottom:18px;width:340px;height:auto;z-index:15;display:flex;flex-direction:column;gap:10px;pointer-events:none;min-height:0';document.body.appendChild(leftRail);
 const leftInner=document.createElement('div');leftInner.className='hl-scroll';leftInner.style.cssText='display:flex;flex-direction:column;gap:10px;pointer-events:auto;padding-right:4px';leftRail.appendChild(leftInner);
 const disturbance=card('Primary Disturbance','choose what breaks',true);leftInner.appendChild(disturbance.root);
-const assetSelect=selectControl([
- {value:'P-17',label:'PIPE P-17 · PROCESS LINE'},{value:'P-18',label:'PIPE P-18 · PROCESS LINE'},{value:'T-04',label:'TANK T-04 · STORAGE'},{value:'T-05',label:'TANK T-05 · STORAGE'},
- {value:'V-01',label:'VESSEL V-01 · PRESSURE'},{value:'R-01',label:'REACTOR R-01 · PROCESS'},{value:'HX-01',label:'HX-01 · HEAT EXCHANGER'},{value:'V-17',label:'VALVE V-17 · ISOLATION'},
- {value:'PUMP-01',label:'PUMP-01 · ROTATING EQUIPMENT'},{value:'COMP-01',label:'COMP-01 · COMPRESSOR'},{value:'W-07',label:'WALL W-07 · BARRIER'},{value:'COL-01',label:'COL-01 · STRUCTURE'},{value:'WIN-01',label:'WIN-01 · BUILDING'}
-]);
-disturbance.body.appendChild(text('TARGET',true));disturbance.body.appendChild(assetSelect);
-const faultSelect=selectControl([{value:'leak',label:'LEAK · controlled release'},{value:'rupture',label:'RUPTURE · major release'},{value:'fire',label:'IGNITION · direct fire'},{value:'overheat',label:'OVERHEAT · thermal escalation'},{value:'overpressure',label:'OVERPRESSURE · vessel stress'},{value:'valve_fail',label:'VALVE FAILURE'},{value:'pump_fail',label:'PUMP / COMPRESSOR FAILURE'},{value:'power_loss',label:'POWER LOSS'},{value:'structural_damage',label:'STRUCTURAL DAMAGE'}]);
-disturbance.body.appendChild(text('DISTURBANCE',true));disturbance.body.appendChild(faultSelect);
+const assetSelect=selectControl([{value:'P-17',label:'PIPE P-17 · PROCESS LINE'},{value:'P-18',label:'PIPE P-18 · PROCESS LINE'},{value:'T-04',label:'TANK T-04 · STORAGE'},{value:'T-05',label:'TANK T-05 · STORAGE'},{value:'V-01',label:'VESSEL V-01 · PRESSURE'},{value:'R-01',label:'REACTOR R-01 · PROCESS'},{value:'HX-01',label:'HX-01 · HEAT EXCHANGER'},{value:'V-17',label:'VALVE V-17 · ISOLATION'},{value:'PUMP-01',label:'PUMP-01 · ROTATING EQUIPMENT'},{value:'COMP-01',label:'COMP-01 · COMPRESSOR'},{value:'W-07',label:'WALL W-07 · BARRIER'},{value:'COL-01',label:'COL-01 · STRUCTURE'},{value:'WIN-01',label:'WIN-01 · BUILDING'}]);disturbance.body.appendChild(text('TARGET',true));disturbance.body.appendChild(assetSelect);
+const faultSelect=selectControl([{value:'leak',label:'LEAK · controlled release'},{value:'rupture',label:'RUPTURE · major release'},{value:'fire',label:'IGNITION · direct fire'},{value:'overheat',label:'OVERHEAT · thermal escalation'},{value:'overpressure',label:'OVERPRESSURE · vessel stress'},{value:'valve_fail',label:'VALVE FAILURE'},{value:'pump_fail',label:'PUMP / COMPRESSOR FAILURE'},{value:'power_loss',label:'POWER LOSS'},{value:'structural_damage',label:'STRUCTURAL DAMAGE'}]);disturbance.body.appendChild(text('DISTURBANCE',true));disturbance.body.appendChild(faultSelect);
 const severityWrap=document.createElement('div');severityWrap.style.cssText='display:flex;align-items:center;gap:8px;margin-top:10px;min-width:0';severityWrap.appendChild(text('SEVERITY',true));const severity=document.createElement('input');severity.type='range';severity.min='0.1';severity.max='1';severity.step='0.1';severity.value='0.6';severity.style.flex='1';severity.style.minWidth='0';const sevValue=document.createElement('b');sevValue.textContent='60%';severity.oninput=()=>sevValue.textContent=`${Math.round(Number(severity.value)*100)}%`;severityWrap.append(severity,sevValue);disturbance.body.appendChild(severityWrap);
 const windRow=document.createElement('div');windRow.className='hl-grid2';const windSelect=selectControl([{value:'East',label:'WIND → EAST'},{value:'West',label:'WIND → WEST'},{value:'North',label:'WIND → NORTH'},{value:'South',label:'WIND → SOUTH'}],'East');const weatherSelect=selectControl([{value:'stable',label:'ATMOSPHERE · STABLE'},{value:'neutral',label:'ATMOSPHERE · NEUTRAL'},{value:'unstable',label:'ATMOSPHERE · UNSTABLE'}],'neutral');windRow.append(windSelect,weatherSelect);disturbance.body.appendChild(windRow);
 const inject=button('⚠  INJECT DISTURBANCE',()=>{const winds:Record<string,[number,number]>={East:[3,0],West:[-3,0],North:[0,-3],South:[0,3]};const[windX,windZ]=winds[windSelect.value];sim.injectIncident({assetId:assetSelect.value,mode:faultSelect.value as FaultMode,severity:Number(severity.value),windX,windZ})},'hl-btn-primary');disturbance.body.appendChild(inject);
-
 const response=card('Response & Countermeasures','act on the simulated facility',true);leftInner.appendChild(response.root);const responseGrid=document.createElement('div');responseGrid.className='hl-grid2';for(const[label,mode,cls]of[['ISOLATE SOURCE','isolate','hl-btn-cyan'],['COOL EXPOSED','cool','hl-btn-cyan'],['SUPPRESS FIRE','suppress','hl-btn-green'],['EVACUATE ZONE','evacuate','hl-btn-green'],['EMERGENCY SHUTDOWN','shutdown',''],['FIRE MONITOR','fire_monitor','']]as[string,InterventionMode,string][])responseGrid.appendChild(button(label,()=>sim.intervene(mode),cls));response.body.appendChild(responseGrid);
 const simControls=card('Simulation Controls','time, replay and inspection',true);leftInner.appendChild(simControls.root);const simGrid=document.createElement('div');simGrid.className='hl-grid3';simGrid.appendChild(button('PAUSE',()=>sim.running=false));simGrid.appendChild(button('RESUME',()=>sim.running=true,'hl-btn-cyan'));simGrid.appendChild(button('RESET',()=>{sim.reset();inspector.show()}));simControls.body.appendChild(simGrid);const speed=selectControl([{value:'0.5',label:'0.5×'},{value:'1',label:'1×'},{value:'2',label:'2×'},{value:'4',label:'4×'}],'1');simControls.body.appendChild(speed);speed.onchange=()=>sim.speed=Number(speed.value);
 const cascadeCard=card('Domino Cascade Chain','live consequence propagation',true);leftInner.appendChild(cascadeCard.root);const cascade=document.createElement('div');cascade.className='hl-cascade';cascade.innerHTML='<div class="hl-kicker">Awaiting initiating event…</div>';cascadeCard.body.appendChild(cascade);const riskBar=document.createElement('div');riskBar.className='hl-riskbar';riskBar.innerHTML='<span class="hl-kicker">DOMINO RISK</span><b class="hl-risk-low">LOW</b>';cascadeCard.body.appendChild(riskBar);
-
-const rightRail=document.createElement('div');rightRail.style.cssText='position:fixed;right:18px;top:88px;bottom:18px;width:360px;height:auto;z-index:15;display:flex;flex-direction:column;gap:10px;pointer-events:none;min-height:0';document.body.appendChild(rightRail);
-const rightInner=document.createElement('div');rightInner.className='hl-scroll';rightInner.style.cssText='display:flex;flex-direction:column;gap:10px;pointer-events:auto;padding-left:4px';rightRail.appendChild(rightInner);
-const feedCard=card('Live Event Stream','causal event fabric',true);rightInner.appendChild(feedCard.root);const eventFeed=document.createElement('div');eventFeed.className='hl-feed';feedCard.body.appendChild(eventFeed);
-const selectedCard=card('Twin Inspector','click an asset in the facility',false);rightInner.appendChild(selectedCard.root);
+const rightRail=document.createElement('div');rightRail.style.cssText='position:fixed;right:18px;top:88px;bottom:18px;width:360px;height:auto;z-index:15;display:flex;flex-direction:column;gap:10px;pointer-events:none;min-height:0';document.body.appendChild(rightRail);const rightInner=document.createElement('div');rightInner.className='hl-scroll';rightInner.style.cssText='display:flex;flex-direction:column;gap:10px;pointer-events:auto;padding-left:4px';rightRail.appendChild(rightInner);const feedCard=card('Live Event Stream','causal event fabric',true);rightInner.appendChild(feedCard.root);const eventFeed=document.createElement('div');eventFeed.className='hl-feed';feedCard.body.appendChild(eventFeed);const selectedCard=card('Twin Inspector','click an asset in the facility',false);rightInner.appendChild(selectedCard.root);
 const metrics=document.createElement('div');metrics.className='hl-metrics';metrics.style.cssText+='position:fixed;left:378px;right:396px;top:88px;z-index:14;';document.body.appendChild(metrics);const metricValues=new Map<string,HTMLElement>();for(const[key,label]of[['time','TIME'],['fire','FIRES'],['release','RELEASES'],['cascade','DOMINO ESC.'],['personnel','PERSONNEL RISK']]){const m=document.createElement('div');m.className='hl-glass hl-metric';m.innerHTML=`<div class="hl-metric-label">${label}</div><div class="hl-metric-value">0</div>`;metrics.appendChild(m);metricValues.set(key,m.querySelector('.hl-metric-value') as HTMLElement)}
 const cascadeLabel=(eventType:string)=>{const map:Record<string,string>={'fault.pipe_leak':'Pipe Failure','release.created':'Vapor Cloud','release.ignited':'Ignition','fire.created':'Fire Escalation','thermal.exposure':'Thermal Exposure','overpressure.received':'Overpressure','asset.degraded':'Asset Degraded','asset.failed':'Secondary Failure','route.blocked':'Route Blocked','geometry.changed':'Structural Change','suppression.command':'Suppression','cooling.command':'Cooling','valve.command':'Isolation','shutdown.command':'Emergency Shutdown','evacuation.command':'Evacuation'};return map[eventType]??eventType.replaceAll('.',' ')};
 const severityOf=(type:string)=>{if(type.includes('asset.failed')||type.includes('fire')||type.includes('release.ignited')||type.includes('overpressure'))return['CASCADE','critical']as const;if(type.includes('thermal')||type.includes('degraded')||type.includes('fault')||type.includes('release'))return['WARNING','warn']as const;if(type.includes('command'))return['INTERVENTION','']as const;return['INFO','']as const};
 renderer.domElement.addEventListener('pointerdown',e=>{pointer.x=e.clientX/innerWidth*2-1;pointer.y=-(e.clientY/innerHeight)*2+1;const selected=world.pick(raycaster,camera,pointer);if(selected){const zone=facility.findZone(selected.id);selected.metadata.zone=zone?.name??'unassigned';selected.metadata.connections=facility.neighbors(selected.id).join(',')}inspector.show(selected)});
-let last=performance.now();
-function frame(now:number){requestAnimationFrame(frame);const dt=(now-last)/1000;last=now;sim.update(dt);const snap=sim.snapshot();world.sync(snap);const activeFires=snap.twins.filter(t=>t.kind==='fire'&&t.active).length;const activeReleases=snap.twins.filter(t=>t.kind==='release'&&t.active).length;const failed=snap.twins.filter(t=>!t.active&&!['fire','release'].includes(t.kind)).length;const escalationEvents=snap.events.filter(e=>['asset.failed','fire.created','release.ignited','overpressure.received','route.blocked'].includes(e.type)).length;const personnelRisk=snap.twins.filter(t=>t.kind==='worker').reduce((sum,t)=>sum+Number(t.metadata.exposure??0),0);const riskScore=activeFires*18+activeReleases*12+failed*20+escalationEvents*4+personnelRisk*.1;const riskLevel=riskScore>=70?'CRITICAL':riskScore>=30?'ESCALATE':'LOW';const riskClass=riskScore>=70?'hl-risk-critical':riskScore>=30?'hl-risk-escalate':'hl-risk-low';metricValues.get('time')!.textContent=`${snap.time.toFixed(1)}s`;metricValues.get('fire')!.textContent=String(activeFires);metricValues.get('release')!.textContent=String(activeReleases);metricValues.get('cascade')!.textContent=String(escalationEvents);metricValues.get('personnel')!.textContent=personnelRisk>40?'HIGH':personnelRisk>10?'MED':'LOW';riskBar.innerHTML=`<span class="hl-kicker">DOMINO RISK · ${riskScore.toFixed(0)}</span><b class="${riskClass}">${riskLevel}</b>`;const cascadeEvents=snap.events.filter(e=>['fault.pipe_leak','release.created','release.ignited','fire.created','thermal.exposure','overpressure.received','asset.degraded','asset.failed','route.blocked','geometry.changed'].includes(e.type)).slice(-6);if(cascadeEvents.length===0)cascade.innerHTML='<div class="hl-kicker">Awaiting initiating event…</div>';else{cascade.innerHTML='';cascadeEvents.forEach((e,i)=>{const[sev,cls]=severityOf(e.type);const node=document.createElement('div');node.className=`hl-node ${cls}`;node.textContent=cascadeLabel(e.type);cascade.appendChild(node);if(i<cascadeEvents.length-1){const arrow=document.createElement('span');arrow.className='hl-arrow';arrow.textContent='➜';cascade.appendChild(arrow)}})}const recent=snap.events.slice(-8).reverse();eventFeed.innerHTML=recent.length?recent.map(e=>{const[tag]=severityOf(e.type);const tagClass=tag==='CASCADE'?'hl-tag-cascade':tag==='WARNING'?'hl-tag-warning':tag==='INTERVENTION'?'hl-tag-intervention':'hl-tag-info';const stamp=`${e.time.toFixed(1)}s`;const msg=`${cascadeLabel(e.type)}${e.targetId?` · ${e.targetId}`:''}`;return`<div class="hl-log"><span class="hl-log-time">${stamp}</span><span class="hl-tag ${tagClass}">${tag}</span><span>${msg}</span></div>`}).join(''):'<div class="hl-kicker">Awaiting incident…</div>';selectedCard.body.innerHTML='<div class="hl-kicker">Select any tank, pipe, valve, structure or response asset in the 3D scene to inspect its live state.</div>';controls.update();renderer.render(scene,camera)}requestAnimationFrame(frame);
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+let last=performance.now();function frame(now:number){requestAnimationFrame(frame);const dt=(now-last)/1000;last=now;sim.update(dt);const snap=sim.snapshot();world.sync(snap);const activeFires=snap.twins.filter(t=>t.kind==='fire'&&t.active).length;const activeReleases=snap.twins.filter(t=>t.kind==='release'&&t.active).length;const failed=snap.twins.filter(t=>!t.active&&!['fire','release'].includes(t.kind)).length;const escalationEvents=snap.events.filter(e=>['asset.failed','fire.created','release.ignited','overpressure.received','route.blocked'].includes(e.type)).length;const personnelRisk=snap.twins.filter(t=>t.kind==='worker').reduce((sum,t)=>sum+Number(t.metadata.exposure??0),0);const riskScore=activeFires*18+activeReleases*12+failed*20+escalationEvents*4+personnelRisk*.1;const riskLevel=riskScore>=70?'CRITICAL':riskScore>=30?'ESCALATE':'LOW';const riskClass=riskScore>=70?'hl-risk-critical':riskScore>=30?'hl-risk-escalate':'hl-risk-low';metricValues.get('time')!.textContent=`${snap.time.toFixed(1)}s`;metricValues.get('fire')!.textContent=String(activeFires);metricValues.get('release')!.textContent=String(activeReleases);metricValues.get('cascade')!.textContent=String(escalationEvents);metricValues.get('personnel')!.textContent=personnelRisk>40?'HIGH':personnelRisk>10?'MED':'LOW';riskBar.innerHTML=`<span class="hl-kicker">DOMINO RISK · ${riskScore.toFixed(0)}</span><b class="${riskClass}">${riskLevel}</b>`;const cascadeEvents=snap.events.filter(e=>['fault.pipe_leak','release.created','release.ignited','fire.created','thermal.exposure','overpressure.received','asset.degraded','asset.failed','route.blocked','geometry.changed'].includes(e.type)).slice(-6);if(cascadeEvents.length===0)cascade.innerHTML='<div class="hl-kicker">Awaiting initiating event…</div>';else{cascade.innerHTML='';cascadeEvents.forEach((e,i)=>{const[sev,cls]=severityOf(e.type);const node=document.createElement('div');node.className=`hl-node ${cls}`;node.textContent=cascadeLabel(e.type);cascade.appendChild(node);if(i<cascadeEvents.length-1){const arrow=document.createElement('span');arrow.className='hl-arrow';arrow.textContent='➜';cascade.appendChild(arrow)}})}const recent=snap.events.slice(-8).reverse();eventFeed.innerHTML=recent.length?recent.map(e=>{const[tag]=severityOf(e.type);const tagClass=tag==='CASCADE'?'hl-tag-cascade':tag==='WARNING'?'hl-tag-warning':tag==='INTERVENTION'?'hl-tag-intervention':'hl-tag-info';const stamp=`${e.time.toFixed(1)}s`;const msg=`${cascadeLabel(e.type)}${e.targetId?` · ${e.targetId}`:''}`;return`<div class="hl-log"><span class="hl-log-time">${stamp}</span><span class="hl-tag ${tagClass}">${tag}</span><span>${msg}</span></div>`}).join(''):'<div class="hl-kicker">Awaiting incident…</div>';selectedCard.body.innerHTML='<div class="hl-kicker">Select any tank, pipe, valve, structure or response asset in the 3D scene to inspect its live state.</div>';controls.update();composer.render()}requestAnimationFrame(frame);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight)});
