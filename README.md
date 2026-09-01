@@ -6,27 +6,13 @@ The core idea is deliberately different from a scripted scenario simulator: Haza
 
 ## Core principles
 
-1. **No fixed catastrophe scripts.** The operator injects an initial disturbance; downstream effects must come from twin state and interaction models.
+1. **No fixed catastrophe scripts.** The operator injects an initial disturbance; downstream effects come from twin state and interaction models.
 2. **Asset-level twins own their state.** The renderer never decides physical outcomes.
 3. **Events connect twins.** Thermal exposure, overpressure, flow loss, rupture, ignition, geometry changes, and intervention actions are first-class events.
 4. **3D is a view of world state.** Damage, fire, plume, evacuation, and suppression visuals reflect simulation state rather than drive it.
-5. **Adaptive fidelity.** Expensive models are activated around risk; stable assets remain cheap.
+5. **Adaptive fidelity.** Expensive models are activated around risk; stable assets remain lightweight.
 6. **Counterfactual intervention.** A live state can be cloned and candidate response plans simulated before selection.
 7. **Model provenance and uncertainty are visible.** HazardLens is decision-support simulation, not a claim of exact future prediction.
-
-## Target judge loop
-
-**Break → Emerge → Predict → Intervene → Simulate → Compare → Contain**
-
-A judge can select a supported asset and inject a fault. HazardLens lets the domino effect emerge. On a second run, Intervention Mode identifies candidate ways to break the cascade, simulates those futures in the same 3D twin world, and compares outcomes.
-
-## Planned twin library
-
-- Process: `TankTwin`, `PipeTwin`, `ValveTwin`, `PumpTwin`, `IgnitionSourceTwin`
-- Structure: `WallTwin`, `ColumnTwin`, `WindowTwin`, `DoorTwin`, `BuildingTwin`
-- Environment: `WeatherTwin`, `TerrainTwin`, `SensorTwin`
-- Hazard: `ReleaseTwin`, `PlumeTwin`, `FireTwin`, `PoolFireTwin`, `JetFireTwin`, `BlastTwin`
-- Human/response: `WorkerTwin`, `ResponderTwin`, `RouteTwin`, `SuppressionTwin`, `IsolationTwin`
 
 ## Architecture
 
@@ -40,8 +26,54 @@ Twin Library ──→ Event Fabric ──→ Physics / Consequence Models
              3D Renderer        Forecast / Intervention
 ```
 
-See [`docs/architecture.md`](docs/architecture.md) and [`docs/twin-specification.md`](docs/twin-specification.md) for the implementation contract.
+## Running locally
 
-## Status
+### Requirements
 
-Foundation phase: architecture, twin contracts, causal event model, fidelity policy, and validation plan.
+- Node.js 22+
+- npm
+
+### Install dependencies
+
+```bash
+npm install
+```
+
+### Run simulation tests
+
+```bash
+npm test
+```
+
+### Run the headless simulation demo
+
+```bash
+npm run demo
+```
+
+### Start the 3D viewer
+
+```bash
+npm run viewer
+```
+
+Then open the local Vite URL shown in the terminal.
+
+### Build everything
+
+```bash
+npm run build:all
+```
+
+## Current status
+
+The project currently contains:
+
+- deterministic event-driven twin runtime
+- emergent hazard propagation
+- thermal exposure and secondary failure modelling
+- counterfactual intervention foundation
+- Three.js digital twin viewer
+- interactive twin inspection
+
+The next development phases focus on higher-fidelity industrial assets, consequence models, and expanded response simulation.
