@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, feat/federated-twin-foundation]
+    branches: [main, feat/federated-twin-foundation, feat/phase-1-twin-architecture]
   pull_request:
 
 jobs:
