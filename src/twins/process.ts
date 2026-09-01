@@ -57,12 +57,12 @@ export class PipeTwin extends BaseTwin {
     }
     if (event.type === "valve.command" && event.payload.pipeId === this.state.id && event.payload.closed === true) {
       this.leakRateKgS = 0;
-      this.state.metadata.isolationFactor = 0;
+      this.state.metadata.isolationFactor = .08;
       this.state.metadata.isolated = true;
     }
     if (event.type === "shutdown.command" && (!event.targetId || event.targetId === this.state.id)) {
       this.leakRateKgS = 0;
-      this.state.metadata.isolationFactor = 0;
+      this.state.metadata.isolationFactor = .05;
       this.state.metadata.shutdown = true;
     }
   }
