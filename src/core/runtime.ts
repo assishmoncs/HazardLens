@@ -106,8 +106,6 @@ export class SimulationRuntime {
 
     const intensity = Number(payload.intensityMw);
     if (!Number.isFinite(intensity) || intensity <= 0) throw new Error("Invalid fire intensity");
-    // Current FireTwin derives its own downstream source behavior from its intensity;
-    // preserve the initiating event in the event fabric rather than adding a duplicate source field.
     this.add(new FireTwin(`fire-${event.id}`, origin, intensity));
   }
 
