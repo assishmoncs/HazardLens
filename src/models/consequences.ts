@@ -70,6 +70,18 @@ export const MODEL_PROVENANCE: Record<string, ModelProvenance> = {
     description: "Screening model for heat and overpressure damage progression in structural elements.",
     assumptions: ["Generic structural member", "No full finite-element analysis", "Thresholds are scenario parameters"],
     references: ["Structural fire/blast response should be calibrated to the facility's engineering design"]
+  },
+  "bleve-fireball-v1": {
+    id: "bleve-fireball-v1", version: "2.0.0",
+    description: "Boiling Liquid Expanding Vapor Explosion fireball and blast consequence model.",
+    assumptions: ["Instantaneous complete vessel failure", "Spherical ground-lift fireball", "Empirical TNO combustion energy fraction"],
+    references: ["TNO Yellow Book; CCPS Guidelines for Chemical Release Consequence Analysis; API 521 Section 5.7"]
+  },
+  "der02-threat-zones-v2": {
+    id: "der02-threat-zones-v2", version: "2.0.0",
+    description: "Multi-tiered DER-02 Threat-Zone estimation matching NFPA, API, and industrial emergency response criteria.",
+    assumptions: ["Iso-radiant 37.5, 12.5, 4.7, 1.6 kW/m² thresholds", "LEL / 50% LEL vapor boundaries", "Point-source thermal attenuation"],
+    references: ["DER-02: Threat-Zone Estimation for Industrial Fire and Explosion Response; NFPA 15/69; API 521"]
   }
 };
 
@@ -119,3 +131,6 @@ export function updateStructuralDamage(input: StructuralModelInput) {
   const damageState = nextIntegrity <= 0.25 ? "failed" : nextIntegrity <= 0.55 ? "severe" : nextIntegrity <= 0.8 ? "damaged" : "normal";
   return { integrity: nextIntegrity, damageState };
 }
+
+export * from './substances.js';
+export * from './threatZones.js';
