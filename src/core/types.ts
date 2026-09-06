@@ -1,21 +1,36 @@
 export type TwinKind =
-  | "tank" | "pressure-vessel" | "reactor" | "pipe" | "pipe-junction"
-  | "valve" | "pump" | "compressor" | "heat-exchanger"
-  | "ignition" | "wall" | "column" | "window" | "door" | "building"
-  | "weather" | "release" | "fire" | "suppression" | "hydrant" | "fire-monitor"
-  | "shutdown" | "worker" | "vehicle" | "route" | "sensor" | "facility";
+  | "tank" | "sphere-tank" | "pressure-vessel" | "reactor" | "distillation-column"
+  | "pipe" | "pipe-junction" | "valve" | "pump" | "compressor" | "heat-exchanger"
+  | "ignition" | "wall" | "column" | "window" | "door" | "building" | "bund-wall"
+  | "weather" | "release" | "fire" | "suppression" | "deluge-system" | "hydrant"
+  | "fire-monitor" | "flare-stack" | "shutdown" | "worker" | "vehicle" | "route"
+  | "sensor" | "gas-detector" | "flame-detector" | "muster-station" | "siren" | "generator" | "facility";
 
 export type Fidelity = 0 | 1 | 2 | 3 | 4;
 
 export interface Vec3 { x: number; y: number; z: number; }
-export interface PhysicalProfile { material?: string; dimensions?: Vec3; properties: Record<string, string | number | boolean>; }
-export interface TwinRelationship { targetId: string; type: "connected" | "nearby" | "depends_on" | "contained_by"; }
+export interface PhysicalProfile {
+  material?: string;
+  dimensions?: Vec3;
+  chemical?: string;
+  properties: Record<string, string | number | boolean>;
+}
+export interface TwinRelationship {
+  targetId: string;
+  type: "connected" | "nearby" | "depends_on" | "contained_by" | "protects";
+}
 export interface TwinHistoryEntry { time: number; eventType: EventType; summary: string; }
 export interface BehaviorModel { update(state: TwinState, dt: number, context: TwinContext): void; }
 
 export interface TwinState {
-  id: string; kind: TwinKind; position: Vec3; fidelity: Fidelity; active: boolean;
-  integrity: number; temperatureK: number; metadata: Record<string, string | number | boolean>;
+  id: string;
+  kind: TwinKind;
+  position: Vec3;
+  fidelity: Fidelity;
+  active: boolean;
+  integrity: number;
+  temperatureK: number;
+  metadata: Record<string, string | number | boolean>;
 }
 
 export interface TwinMetadata {
@@ -26,15 +41,21 @@ export interface TwinMetadata {
 }
 
 export type EventType =
-  | "fault.pipe_leak" | "fault.asset" | "release.created" | "release.updated"
+  | "fault.pipe_leak" | "fault.asset" | "fault.rupture" | "release.created" | "release.updated"
   | "release.ignited" | "fire.created" | "thermal.exposure" | "overpressure.received"
-  | "asset.degraded" | "asset.failed" | "valve.command" | "pump.command"
+  | "asset.degraded" | "asset.failed" | "bleve.occurred" | "valve.command" | "pump.command"
   | "power.loss" | "shutdown.command" | "suppression.command" | "cooling.command"
+  | "deluge.activated" | "blowdown.command" | "alarm.triggered" | "sensor.reading"
   | "evacuation.command" | "route.blocked" | "geometry.changed";
 
 export interface SimEvent<T extends Record<string, unknown> = Record<string, unknown>> {
-  id: string; type: EventType; time: number; sourceId: string; targetId?: string;
-  payload: T; causedBy?: string;
+  id: string;
+  type: EventType;
+  time: number;
+  sourceId: string;
+  targetId?: string;
+  payload: T;
+  causedBy?: string;
 }
 
 export interface WorldSnapshot {
