@@ -8,32 +8,48 @@ const d=(a:Vec3,b:Vec3)=>Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z);
 
 export class ReleaseTwin extends BaseTwin {
   age=0; ignited=false;
+  public origin: Vec3;
   constructor(id:string,p:Vec3,public sourceId:string,public rateKgS:number){
-    super({id,kind:"release",position:{...p},fidelity:2,active:true,integrity:1,temperatureK:303,metadata:{radiusM:.5,ignited:false,dispersionModel:"plume-gaussian-v1"}}, {physicalProfile:{material:"gas",properties:{rateKgS}},relationships:[],history:[],modelIds:["plume-gaussian-v1","ignition-screen-v1"]});
+    super({id,kind:"release",position:{...p},fidelity:2,active:true,integrity:1,temperatureK:303,metadata:{originX:p.x,originY:p.y,originZ:p.z,radiusM:.5,ignited:false,dispersionModel:"plume-gaussian-v1"}}, {physicalProfile:{material:"gas",properties:{rateKgS}},relationships:[],history:[],modelIds:["plume-gaussian-v1","ignition-screen-v1"]});
+    this.origin = { ...p };
+  }
+  distanceToPoint(p: Vec3): number {
+    const ax = this.origin.x, ay = this.origin.y, az = this.origin.z;
+    const bx = this.state.position.x, by = this.state.position.y, bz = this.state.position.z;
+    const dx = bx - ax, dy = by - ay, dz = bz - az;
+    const lenSq = dx * dx + dy * dy + dz * dz;
+    if (lenSq < 1e-6) {
+      return Math.hypot(p.x - ax, p.y - ay, p.z - az);
+    }
+    const t = Math.max(0, Math.min(1, ((p.x - ax) * dx + (p.y - ay) * dy + (p.z - az) * dz) / lenSq));
+    const projX = ax + t * dx;
+    const projY = ay + t * dy;
+    const projZ = az + t * dz;
+    return Math.hypot(p.x - projX, p.y - projY, p.z - projZ);
   }
   onEvent(_event:SimEvent,_context:TwinContext){}
   tick(dt:number,c:TwinContext){
     this.age+=dt;
     const w=[...c.twins()].find(t=>t instanceof WeatherTwin) as WeatherTwin|undefined;
     const plume=estimatePlume({rateKgS:this.rateKgS,ageS:this.age,windX:w?.windX??0,windZ:w?.windZ??0,stability:((w?.state.metadata.stability as string)??"D") as "A"|"B"|"C"|"D"|"E"|"F"});
-    this.state.position.x=plume.centerX;
-    this.state.position.z=plume.centerZ;
+    this.state.position.x=this.origin.x + plume.centerX;
+    this.state.position.z=this.origin.z + plume.centerZ;
     this.state.metadata.radiusM=plume.radiusM;
     this.state.metadata.spreadM=plume.spreadM;
     this.state.metadata.windSpeedMS=plume.windSpeedMS;
     if(!this.ignited){
       for(const t of c.twins()){
-        if(t instanceof IgnitionSourceTwin&&t.enabled&&d(this.state.position,t.state.position)<=plume.radiusM){
+        if(t instanceof IgnitionSourceTwin&&t.enabled&&this.distanceToPoint(t.state.position)<=plume.radiusM){
           this.ignited=true;
           this.state.metadata.ignited=true;
           c.emit({type:"release.ignited",sourceId:this.state.id,payload:{releaseId:this.state.id,model:"ignition-screen-v1"}});
-          c.emit({type:"fire.created",sourceId:this.state.id,payload:{origin:{...this.state.position},intensityMw:Math.max(.5,this.rateKgS*8),sourceReleaseId:this.state.id}});
+          c.emit({type:"fire.created",sourceId:this.state.id,payload:{origin:{...t.state.position},intensityMw:Math.max(.5,this.rateKgS*8),sourceReleaseId:this.state.id}});
           break;
         }
       }
     }
   }
-  clone():Twin{const x=new ReleaseTwin(this.state.id,{...this.state.position},this.sourceId,this.rateKgS);x.age=this.age;x.ignited=this.ignited;Object.assign(x.state,structuredClone(this.state));return x}
+  clone():Twin{const x=new ReleaseTwin(this.state.id,{...this.origin},this.sourceId,this.rateKgS);x.age=this.age;x.ignited=this.ignited;Object.assign(x.state,structuredClone(this.state));return x}
 }
 
 export class FireTwin extends BaseTwin {

@@ -237,6 +237,10 @@ export class DelugeSystemTwin extends BaseTwin {
     if (this.activated) return;
     this.activated = true;
     this.state.metadata.activated = true;
+    const target = context.get(this.targetProtectedAssetId);
+    if (target) {
+      target.state.metadata.delugeActive = true;
+    }
     context.emit({
       type: "deluge.activated",
       sourceId: this.state.id,
@@ -245,7 +249,14 @@ export class DelugeSystemTwin extends BaseTwin {
     });
   }
 
-  tick(): void {}
+  tick(_dt: number, context: TwinContext): void {
+    if (this.activated && this.targetProtectedAssetId) {
+      const target = context.get(this.targetProtectedAssetId);
+      if (target) {
+        target.state.metadata.delugeActive = true;
+      }
+    }
+  }
   clone(): Twin {
     const x = new DelugeSystemTwin(this.state.id, this.state.position, this.targetProtectedAssetId, this.flowRateLpm);
     x.activated = this.activated;
@@ -279,15 +290,27 @@ export class GasDetectorTwin extends BaseTwin {
   onEvent(_event: SimEvent): void {}
 
   tick(_dt: number, context: TwinContext): void {
-    // Sample surrounding releases
+    // Sample surrounding releases along the dispersion corridor
     let highestLel = 0;
     for (const twin of context.twins()) {
       if (twin.state.kind === "release" && twin.state.active) {
-        const dist = Math.hypot(
-          this.state.position.x - twin.state.position.x,
-          this.state.position.y - twin.state.position.y,
-          this.state.position.z - twin.state.position.z
-        );
+        const ox = Number(twin.state.metadata.originX ?? (twin as any).origin?.x ?? twin.state.position.x);
+        const oy = Number(twin.state.metadata.originY ?? (twin as any).origin?.y ?? twin.state.position.y);
+        const oz = Number(twin.state.metadata.originZ ?? (twin as any).origin?.z ?? twin.state.position.z);
+        const bx = twin.state.position.x, by = twin.state.position.y, bz = twin.state.position.z;
+        const dx = bx - ox, dy = by - oy, dz = bz - oz;
+        const lenSq = dx * dx + dy * dy + dz * dz;
+        let dist: number;
+        if (lenSq < 1e-6) {
+          dist = Math.hypot(this.state.position.x - bx, this.state.position.y - by, this.state.position.z - bz);
+        } else {
+          const t = Math.max(0, Math.min(1, ((this.state.position.x - ox) * dx + (this.state.position.y - oy) * dy + (this.state.position.z - oz) * dz) / lenSq));
+          dist = Math.hypot(
+            this.state.position.x - (ox + t * dx),
+            this.state.position.y - (oy + t * dy),
+            this.state.position.z - (oz + t * dz)
+          );
+        }
         const radius = Number(twin.state.metadata.radiusM ?? 5);
         if (dist <= radius) {
           const intensity = (1 - dist / Math.max(1, radius)) * 100;

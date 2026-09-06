@@ -233,7 +233,7 @@ export class SphereTankTwin extends BaseTwin {
       this.state.metadata.bleveRisk = risk.risk;
 
       // Unwetted steel roof rupture causing catastrophic BLEVE
-      if (this.pressureBar >= this.maxPressureBar || risk.failureThreshold || this.heatDose > 550) {
+      if (this.pressureBar >= this.maxPressureBar || risk.failureThreshold || (!this.state.metadata.delugeActive && this.heatDose > 550)) {
         this.triggerBleve(context, event.id);
       }
     }
