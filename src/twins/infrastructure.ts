@@ -3,7 +3,7 @@ import { BaseTwin } from "./base.js";
 
 const cloneState = <T>(value: T): T => structuredClone(value);
 
-function meta(modelIds: string[], relationships: { targetId: string; type: "connected" | "nearby" | "depends_on" | "contained_by" }[] = []) {
+function meta(modelIds: string[], relationships: { targetId: string; type: "connected" | "nearby" | "depends_on" | "contained_by" | "protects" }[] = []) {
   return { modelIds, relationships, physicalProfile: undefined, history: [] };
 }
 
@@ -202,4 +202,352 @@ export class RouteTwin extends StaticTwin {
   constructor(id: string, position: Vec3) { super(state(id, "route", position, { open: true, risk: 0, capacity: 50 }), meta(["route-risk-v1"])); }
   onEvent(event: SimEvent): void { if (event.type === "route.blocked" && event.targetId === this.state.id) { this.state.metadata.open = false; this.state.metadata.risk = 1; } }
   clone(): Twin { const x = new RouteTwin(this.state.id, this.state.position); Object.assign(x.state, cloneState(this.state)); return x; }
+}
+
+/**
+ * Automated Fixed Deluge Water Spray Twin (NFPA 15 standard).
+ * Protects vessels and equipment with high-rate water curtain cooling.
+ */
+export class DelugeSystemTwin extends BaseTwin {
+  public activated = false;
+  constructor(id: string, position: Vec3, public targetProtectedAssetId: string, public flowRateLpm = 3200) {
+    super(
+      state(id, "deluge-system", position, {
+        targetProtectedAssetId,
+        flowRateLpm,
+        activated: false,
+        waterPressureBar: 9.5,
+        coverageAreaM2: 280
+      }),
+      meta(["deluge-protection-v1"], [{ targetId: targetProtectedAssetId, type: "protects" }])
+    );
+  }
+
+  onEvent(event: SimEvent, context: TwinContext): void {
+    if (event.type === "deluge.activated" && (event.targetId === this.state.id || event.targetId === this.targetProtectedAssetId)) {
+      this.activate(context);
+    }
+    if (event.type === "alarm.triggered" && event.payload.severity === "CRITICAL" && !this.activated) {
+      // Automatic executive interlock: activate deluge if optical flame detector confirmed
+      this.activate(context);
+    }
+  }
+
+  private activate(context: TwinContext) {
+    if (this.activated) return;
+    this.activated = true;
+    this.state.metadata.activated = true;
+    context.emit({
+      type: "deluge.activated",
+      sourceId: this.state.id,
+      targetId: this.targetProtectedAssetId,
+      payload: { flowRateLpm: this.flowRateLpm, rateKw: 850, protectionFactor: 0.75 }
+    });
+  }
+
+  tick(): void {}
+  clone(): Twin {
+    const x = new DelugeSystemTwin(this.state.id, this.state.position, this.targetProtectedAssetId, this.flowRateLpm);
+    x.activated = this.activated;
+    Object.assign(x.state, cloneState(this.state));
+    return x;
+  }
+}
+
+/**
+ * Catalytic Bead / Optical Flammable Gas Detector Twin.
+ * Monitors local Lower Explosive Limit (% LEL) and triggers plant safety interlocks.
+ */
+export class GasDetectorTwin extends BaseTwin {
+  public currentLel = 0;
+  public alarmLevel: "NORMAL" | "LOW_ALARM" | "HIGH_ALARM" = "NORMAL";
+
+  constructor(id: string, position: Vec3, public chemical = "propane") {
+    super(
+      state(id, "gas-detector", position, {
+        chemical,
+        lelPct: 0,
+        alarmLevel: "NORMAL",
+        tripLelLow: 20,
+        tripLelHigh: 50,
+        online: true
+      }),
+      meta(["gas-detection-v1"])
+    );
+  }
+
+  onEvent(_event: SimEvent): void {}
+
+  tick(_dt: number, context: TwinContext): void {
+    // Sample surrounding releases
+    let highestLel = 0;
+    for (const twin of context.twins()) {
+      if (twin.state.kind === "release" && twin.state.active) {
+        const dist = Math.hypot(
+          this.state.position.x - twin.state.position.x,
+          this.state.position.y - twin.state.position.y,
+          this.state.position.z - twin.state.position.z
+        );
+        const radius = Number(twin.state.metadata.radiusM ?? 5);
+        if (dist <= radius) {
+          const intensity = (1 - dist / Math.max(1, radius)) * 100;
+          highestLel = Math.max(highestLel, intensity);
+        }
+      }
+    }
+    this.currentLel = highestLel;
+    this.state.metadata.lelPct = Math.round(highestLel);
+
+    if (highestLel >= 50 && this.alarmLevel !== "HIGH_ALARM") {
+      this.alarmLevel = "HIGH_ALARM";
+      this.state.metadata.alarmLevel = "HIGH_ALARM";
+      context.emit({
+        type: "alarm.triggered",
+        sourceId: this.state.id,
+        payload: { alarmType: "GAS_HIGH_HIGH", lelPct: highestLel, severity: "CRITICAL", assetId: this.state.id }
+      });
+      // Executive trip ESD
+      context.emit({ type: "shutdown.command", sourceId: this.state.id, payload: { reason: "GAS_50PCT_LEL" } });
+    } else if (highestLel >= 20 && this.alarmLevel === "NORMAL") {
+      this.alarmLevel = "LOW_ALARM";
+      this.state.metadata.alarmLevel = "LOW_ALARM";
+      context.emit({
+        type: "alarm.triggered",
+        sourceId: this.state.id,
+        payload: { alarmType: "GAS_LOW_WARNING", lelPct: highestLel, severity: "WARNING", assetId: this.state.id }
+      });
+    } else if (highestLel < 15 && this.alarmLevel !== "NORMAL") {
+      this.alarmLevel = "NORMAL";
+      this.state.metadata.alarmLevel = "NORMAL";
+    }
+  }
+
+  clone(): Twin {
+    const x = new GasDetectorTwin(this.state.id, this.state.position, this.chemical);
+    x.currentLel = this.currentLel;
+    x.alarmLevel = this.alarmLevel;
+    Object.assign(x.state, cloneState(this.state));
+    return x;
+  }
+}
+
+/**
+ * Optical Multi-Spectrum UV/IR Flame Detector Twin.
+ * Line-of-sight optical detection for instantaneous fire sensing.
+ */
+export class FlameDetectorTwin extends BaseTwin {
+  public flameDetected = false;
+
+  constructor(id: string, position: Vec3, public fovDegrees = 120, public rangeM = 35) {
+    super(
+      state(id, "flame-detector", position, {
+        flameDetected: false,
+        fovDegrees,
+        rangeM,
+        opticalHealth: 1.0
+      }),
+      meta(["flame-detection-v1"])
+    );
+  }
+
+  onEvent(_event: SimEvent): void {}
+
+  tick(_dt: number, context: TwinContext): void {
+    let fireInSight = false;
+    for (const twin of context.twins()) {
+      if (twin.state.kind === "fire" && twin.state.active) {
+        const dist = Math.hypot(
+          this.state.position.x - twin.state.position.x,
+          this.state.position.y - twin.state.position.y,
+          this.state.position.z - twin.state.position.z
+        );
+        if (dist <= this.rangeM) {
+          fireInSight = true;
+          break;
+        }
+      }
+    }
+
+    if (fireInSight && !this.flameDetected) {
+      this.flameDetected = true;
+      this.state.metadata.flameDetected = true;
+      context.emit({
+        type: "alarm.triggered",
+        sourceId: this.state.id,
+        payload: { alarmType: "OPTICAL_FLAME_CONFIRMED", severity: "CRITICAL", detectorId: this.state.id }
+      });
+    } else if (!fireInSight && this.flameDetected) {
+      this.flameDetected = false;
+      this.state.metadata.flameDetected = false;
+    }
+  }
+
+  clone(): Twin {
+    const x = new FlameDetectorTwin(this.state.id, this.state.position, this.fovDegrees, this.rangeM);
+    x.flameDetected = this.flameDetected;
+    Object.assign(x.state, cloneState(this.state));
+    return x;
+  }
+}
+
+/**
+ * Industrial Flare Stack & Emergency Relief System Twin.
+ * Incinerates emergency blowdown hydrocarbons to depressurize process units.
+ */
+export class FlareStackTwin extends BaseTwin {
+  public flaringMw = 0.5; // Pilot flame base
+  constructor(id: string, position: Vec3) {
+    super(
+      state(id, "flare-stack", position, {
+        heightM: 45,
+        tipFlameIntensityMw: 0.5,
+        purgeGasActive: true,
+        smokelessSteamRateKgH: 1200
+      }),
+      meta(["flare-relief-v1"])
+    );
+  }
+
+  onEvent(event: SimEvent, context: TwinContext): void {
+    if (event.type === "blowdown.command") {
+      this.flaringMw = 18.0;
+      this.state.metadata.tipFlameIntensityMw = 18.0;
+      this.state.metadata.status = "FULL_EMERGENCY_DEPRESSURIZING";
+      context.emit({
+        type: "fire.created",
+        sourceId: this.state.id,
+        payload: { origin: { x: this.state.position.x, y: this.state.position.y + 45, z: this.state.position.z }, intensityMw: 18.0 }
+      });
+    }
+  }
+
+  tick(): void {}
+  clone(): Twin {
+    const x = new FlareStackTwin(this.state.id, this.state.position);
+    x.flaringMw = this.flaringMw;
+    Object.assign(x.state, cloneState(this.state));
+    return x;
+  }
+}
+
+/**
+ * Secondary Containment Dike / Bund Wall Twin.
+ * Encloses hazardous tank farms, retains liquid releases, and bounds pool fire footprints.
+ */
+export class BundWallTwin extends BaseTwin {
+  public liquidContainedM3 = 0;
+  public capacityM3 = 1200;
+  constructor(id: string, position: Vec3, public enclosedTanks: string[]) {
+    super(
+      state(id, "bund-wall", position, {
+        capacityM3: 1200,
+        liquidContainedM3: 0,
+        heightM: 1.8,
+        wallIntegrity: 1.0,
+        overflow: false
+      }),
+      meta(["bund-containment-v1"])
+    );
+  }
+
+  onEvent(event: SimEvent, _context: TwinContext): void {
+    if (event.type === "release.created" && this.enclosedTanks.includes(String(event.sourceId))) {
+      const addedVolume = Number(event.payload.rateKgS ?? 1) * 0.002;
+      this.liquidContainedM3 += addedVolume;
+      this.state.metadata.liquidContainedM3 = Math.min(this.capacityM3, this.liquidContainedM3);
+      if (this.liquidContainedM3 >= this.capacityM3) {
+        this.state.metadata.overflow = true;
+      }
+    }
+  }
+
+  tick(): void {}
+  clone(): Twin {
+    const x = new BundWallTwin(this.state.id, this.state.position, [...this.enclosedTanks]);
+    x.liquidContainedM3 = this.liquidContainedM3;
+    Object.assign(x.state, cloneState(this.state));
+    return x;
+  }
+}
+
+/**
+ * Safe Evacuation Muster Station Twin.
+ * Tracks accounted personnel and evacuation status.
+ */
+export class MusterStationTwin extends StaticTwin {
+  public musteredCount = 0;
+  constructor(id: string, position: Vec3, public musterZoneName = "MUSTER POINT ALPHA") {
+    super(
+      state(id, "muster-station", position, {
+        zoneName: musterZoneName,
+        musteredCount: 0,
+        safeStatus: "SECURE",
+        radiantLoadKwM2: 0.1
+      }),
+      meta(["muster-station-v1"])
+    );
+  }
+
+  onEvent(event: SimEvent): void {
+    if (event.type === "evacuation.command") {
+      this.musteredCount += 1;
+      this.state.metadata.musteredCount = this.musteredCount;
+    }
+  }
+
+  clone(): Twin {
+    const x = new MusterStationTwin(this.state.id, this.state.position, this.musterZoneName);
+    x.musteredCount = this.musteredCount;
+    Object.assign(x.state, cloneState(this.state));
+    return x;
+  }
+}
+
+/**
+ * Plant-Wide Emergency Alarm Siren Twin.
+ */
+export class AlarmSirenTwin extends StaticTwin {
+  public sounding = false;
+  constructor(id: string, position: Vec3) {
+    super(state(id, "siren", position, { sounding: false, dbRating: 135 }), meta(["alarm-siren-v1"]));
+  }
+
+  onEvent(event: SimEvent): void {
+    if (event.type === "alarm.triggered" || event.type === "shutdown.command" || event.type === "evacuation.command") {
+      this.sounding = true;
+      this.state.metadata.sounding = true;
+    }
+  }
+
+  clone(): Twin {
+    const x = new AlarmSirenTwin(this.state.id, this.state.position);
+    x.sounding = this.sounding;
+    Object.assign(x.state, cloneState(this.state));
+    return x;
+  }
+}
+
+/**
+ * Emergency Standby Power Diesel Generator Twin.
+ */
+export class GeneratorTwin extends BaseTwin {
+  public generating = true;
+  constructor(id: string, position: Vec3) {
+    super(state(id, "generator", position, { generating: true, loadKw: 750, fuelHours: 48 }), meta(["generator-v1"]));
+  }
+
+  onEvent(event: SimEvent): void {
+    if (event.type === "power.loss") {
+      this.state.metadata.status = "AUTO_START_CRITICAL_POWER";
+      this.generating = true;
+    }
+  }
+
+  tick(): void {}
+  clone(): Twin {
+    const x = new GeneratorTwin(this.state.id, this.state.position);
+    x.generating = this.generating;
+    Object.assign(x.state, cloneState(this.state));
+    return x;
+  }
 }
